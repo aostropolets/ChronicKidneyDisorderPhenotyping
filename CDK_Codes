@@ -1,8 +1,8 @@
 TRANSPLANT
 excluded:
-proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.91  Transplant from live related donor ICD9Proc 
-proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.92  Transplant from live non-related donor ICD9Proc 
-proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.93  Transplant from cadaver  ICD9Proc 
+proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.91  Transplant from live related donor ICD9Proc
+proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.92  Transplant from live non-related donor ICD9Proc
+proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.93  Transplant from cadaver  ICD9Proc
 proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT60ZZ  Resection of Right Ureter, Open Approach ICD10  55.51
 proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT64ZZ  Resection of Right Ureter, Percutaneous Endoscopic Approach  ICD10  55.51
 proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT67ZZ  Resection of Right Ureter, Via Natural or Artificial Opening ICD10  55.51
@@ -90,7 +90,7 @@ select
         on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
            c.invalid_reason is null
     where ancestor_concept_id in (
-    
+
 197320, --Acute renal failure syndrome
 444044, --Acute tubular necrosis
 761083, --Acute injury of kidney -- coundn't find a common parent w/o nephritis
@@ -122,7 +122,7 @@ select
         on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
            c.invalid_reason is null
     where ancestor_concept_id in (
-    
+
 193782,	-- End-stage renal disease
 46271022, -- Chronic kidney disease
 196991, --Chronic renal impairment
@@ -144,14 +144,13 @@ select
         on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
            c.invalid_reason is null
     where ancestor_concept_id in (
-    
+
 132797, -- Sepsis
 436375, --	Hypovolemia
-201965, -- Shock 
+201965, -- Shock
  )
           and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
 ;
-
 -- didn't get additional codes
 
 
@@ -169,7 +168,7 @@ select
         on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
            c.invalid_reason is null
     where ancestor_concept_id in (
-    
+
 193782,	-- End-stage renal disease
 46271022, -- Chronic kidney disease
 196991, --Chronic renal impairment
@@ -178,19 +177,44 @@ select
           and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
 ;
 
-'Other_kidney'
+insert into ckd_codes_anna
+select
+   'Other_KD' as category,
+      c.concept_id,
+      c.concept_name,
+      c.concept_code,
+      c.vocabulary_id,
+      c.domain_id
+    from devv5.concept_ancestor
+      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
+      join devv5.concept c
+        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
+           c.invalid_reason is null
+    where ancestor_concept_id in (
+
+198124, --kidney disease
+75650, --proteinuria
+193955, --Tuberculosis of kidney
+201313 --Hypertensive renal disease
+ )
+          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
+;
+-- include nephrectomies
+--urether disorders?
+
+-- LABS
+
+select * from devv5.concept where lower(concept_name) like 'creatinine%'
+  ;
 
 
-'Labs'
+select * from sources.loinc
+where lower(component) like '%creatinine%'
+limit 20
+;
 
 
-
-
-	
-
-
-
-
+select * from ckd_codes where query_template like '%lab%';
 
 
 
