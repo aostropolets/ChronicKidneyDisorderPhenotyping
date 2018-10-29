@@ -1,0 +1,216 @@
+TRANSPLANT
+excluded:
+proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.91  Transplant from live related donor ICD9Proc 
+proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.92  Transplant from live non-related donor ICD9Proc 
+proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.93  Transplant from cadaver  ICD9Proc 
+proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT60ZZ  Resection of Right Ureter, Open Approach ICD10  55.51
+proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT64ZZ  Resection of Right Ureter, Percutaneous Endoscopic Approach  ICD10  55.51
+proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT67ZZ  Resection of Right Ureter, Via Natural or Artificial Opening ICD10  55.51
+proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT68ZZ  Resection of Right Ureter, Via Natural or Artificial Opening Endoscopic  ICD10  55.51
+proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT70ZZ  Resection of Left Ureter, Open Approach  ICD10  55.51
+proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT74ZZ  Resection of Left Ureter, Percutaneous Endoscopic Approach ICD10  55.51
+proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT77ZZ  Resection of Left Ureter, Via Natural or Artificial Opening  ICD10  55.51
+proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT78ZZ  Resection of Left Ureter, Via Natural or Artificial Opening Endoscopic ICD10  55.51
+proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   55.51  Nephroureterectomy ICD9Proc ;
+
+drop table ckd_codes_anna;
+create table ckd_codes_anna
+  as
+    select
+      'Transplant' as category,
+      c.concept_id,
+      c.concept_name,
+      c.concept_code,
+      c.vocabulary_id,
+      c.domain_id
+    from devv5.concept_ancestor
+      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
+      join devv5.concept c
+        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc') and
+           c.invalid_reason is null
+    where ancestor_concept_id in (
+      --------procedures------
+      4163566, -- SNOMED Renal replacement
+      4322471, -- transplant of kidney
+      4146256, -- transplant nephrectomy
+      2877118, -- ICD10 0TY0
+      2833286, -- ICD10 0TY1
+      4082531, --US scan of transpl
+      4180454, --Examination of live donor after kidney transplant
+      42690461, -- Fluoroscopy guided removal of nephrostomy tube from transplanted kidney
+      ------ conditions ----
+      42539502, -- transplanted kidney present
+      4324887 --Disorder related to renal transplantation
+    )
+          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
+;
+insert into ckd_codes_anna
+select
+      'Dialysis' as category,
+      c.concept_id,
+      c.concept_name,
+      c.concept_code,
+      c.vocabulary_id,
+      c.domain_id
+    from devv5.concept_ancestor
+      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
+      join devv5.concept c
+        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
+           c.invalid_reason is null
+    where ancestor_concept_id in (
+4019967, -- Dependence on renal dialysis
+4059475, --  H/O: renal dialysis
+4300837, --  Dialysis care assessment
+4300838, --  Dialysis care education
+4146536, -- Renal dialysis
+438624,  -- Complication of renal dialysis
+4026915, --  Revision of arteriovenous shunt for renal dialysis
+4289454, -- Venous catheterization for renal dialysis
+4272012,  --Insertion of cannula for hemodialysis
+4300839, --Dialysis care management
+45887996 --End-Stage Renal Disease Services
+)
+          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
+;
+
+-- select * from devv5.concept where lower(concept_name) like '%bypass%artery%arm%vein%';-- add another
+
+
+insert into ckd_codes_anna
+select
+      'AKD' as category,
+      c.concept_id,
+      c.concept_name,
+      c.concept_code,
+      c.vocabulary_id,
+      c.domain_id
+    from devv5.concept_ancestor
+      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
+      join devv5.concept c
+        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
+           c.invalid_reason is null
+    where ancestor_concept_id in (
+    
+197320, --Acute renal failure syndrome
+444044, --Acute tubular necrosis
+761083, --Acute injury of kidney -- coundn't find a common parent w/o nephritis
+37116430, --Acute kidney failure stage 1
+37116431, --Acute kidney failure stage 2
+37116432, --Acute kidney failure stage 3
+4228827, --Acute milk alkali syndrome
+4111399, --Acute pericarditis secondary to uremia
+4232873, --Acute postoperative renal failure
+40481064, --Acute renal cortical necrosis
+4126305, --Acute renal impairment
+37399017, --Hemorrhagic fever with renal syndrome
+37116834, --Postpartum acute renal failure
+42536547  --Ischemia of kidney (in SNOMED only acute)
+ )
+          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
+;
+insert into ckd_codes_anna
+select
+      'CKD' as category,
+      c.concept_id,
+      c.concept_name,
+      c.concept_code,
+      c.vocabulary_id,
+      c.domain_id
+    from devv5.concept_ancestor
+      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
+      join devv5.concept c
+        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
+           c.invalid_reason is null
+    where ancestor_concept_id in (
+    
+193782,	-- End-stage renal disease
+46271022, -- Chronic kidney disease
+196991, --Chronic renal impairment
+
+ )
+          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
+;
+insert into ckd_codes_anna
+select
+      'Other_Acute' as category,
+      c.concept_id,
+      c.concept_name,
+      c.concept_code,
+      c.vocabulary_id,
+      c.domain_id
+    from devv5.concept_ancestor
+      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
+      join devv5.concept c
+        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
+           c.invalid_reason is null
+    where ancestor_concept_id in (
+    
+132797, -- Sepsis
+436375, --	Hypovolemia
+201965, -- Shock 
+ )
+          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
+;
+
+-- didn't get additional codes
+
+
+insert into ckd_codes_anna
+select
+      'CKD' as category,
+      c.concept_id,
+      c.concept_name,
+      c.concept_code,
+      c.vocabulary_id,
+      c.domain_id
+    from devv5.concept_ancestor
+      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
+      join devv5.concept c
+        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
+           c.invalid_reason is null
+    where ancestor_concept_id in (
+    
+193782,	-- End-stage renal disease
+46271022, -- Chronic kidney disease
+196991, --Chronic renal impairment
+
+ )
+          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
+;
+
+'Other_kidney'
+
+
+'Labs'
+
+
+
+
+	
+
+
+
+
+
+
+
+
+select * from concept_relationship where concept_id_1=37110379 and concept_id_2 = 4146536;
+
+
+excl   Peritoneal dialysis catheter in situ
+;
+select * from ckd_codes where concept_code not in (select concept_code from ckd_codes_anna)
+  and query_template like '%Dialys%';
+
+;
+0. 43021422  473195006  Normal renal function of transplanted kidney exclude?
+1. Other nephrectomies
+2. check deprecated
+
+;
+
+
+select * from devv5.concept where lower(concept_name) like '%transpl%nephrect%' or lower(concept_name) like '%transpl%kidney%' or lower(concept_name) like '%kidney%transpl%'
+and vocabulary_id = 'SNOMED' and domain_id = 'Procedure';
+
