@@ -17,11 +17,11 @@ FROM
         COALESCE(pe.visit_occurrence_id, co.visit_occurrence_id, o.visit_occurrence_id)                	     as visit_occurrence_id
       FROM @target_database_schema.CKD_codes ckd
         LEFT JOIN @cdm_database_schema.PROCEDURE_OCCURRENCE pe
-          on (pe.procedure_concept_id = ckd.concept_id and ckd.flag = 'Dialysis')
+          on (pe.procedure_concept_id = ckd.concept_id and ckd.category = 'Dialysis')
         LEFT JOIN @cdm_database_schema.CONDITION_OCCURRENCE co
-          on (co.condition_concept_id = ckd.concept_id and ckd.flag = 'Dialysis')
+          on (co.condition_concept_id = ckd.concept_id and ckd.category = 'Dialysis')
         LEFT JOIN @cdm_database_schema.OBSERVATION o 
-          on (o.observation_concept_id = ckd.concept_id and ckd.flag = 'Dialysis')
+          on (o.observation_concept_id = ckd.concept_id and ckd.category = 'Dialysis')
       ) E
 -- End CDM tables Criteria
 	JOIN @cdm_database_schema.observation_period OP on E.person_id = OP.person_id and E.start_date >=  OP.observation_period_start_date and E.start_date <= op.observation_period_end_date
