@@ -1,0 +1,34 @@
+
+/* only add UACR calculated from spot definition to #tmp, same day*/
+INSERT INTO #tmp
+SELECT DISTINCT T1.person_id
+	 ,T1.eventStartDate
+	,NULL AS eventEndDate
+	,'Calculated from spot urine albumin/urine Cr' AS eventConceptId
+	,'LabUacr' AS eventType
+	 ,T1.eventNumValue/T2.eventNumValue * 1000 AS eventNumValue
+	 ,NULL AS eventStringValue
+	FROM #tmp T1
+	LEFT JOIN #tmp T2
+	ON T1.person_id = T2.person_id AND T1.eventStartDate = T2.eventStartDate
+	WHERE T1.eventType = ('LabSpotUrineAlbumin') AND T2.eventTYpe = ('LabSpotUrineCr')
+	AND T1.eventStartDate NOT IN (SELECT DISTINCT eventStartDate FROM #tmp WHERE eventType = ('LabUacr') AND #tmp.person_id = T1.person_id)
+	AND T2.eventNumValue != 0 AND T2.eventNumValue IS NOT NULL
+;
+
+INSERT INTO #tmp 
+SELECT DISTINCT T1.person_id
+	,T1.eventStartDate
+	,NULL AS eventEndDate
+	,'Calculated from spot urine protein/urine Cr' AS eventConceptId
+	,'LabUpcr' AS eventType
+	 ,T1.eventNumValue/T2.eventNumValue * 1000 AS eventNumValue
+	 ,NULL AS eventStringValue
+	FROM #tmp T1
+	LEFT JOIN #tmp T2
+	ON T1.person_id = T2.person_id AND  T1.eventStartDate = T2.eventStartDate
+	WHERE T1.eventType = ('LabSpotUrineProtein') AND T2.eventTYpe = ('LabSpotUr, ineCr')
+	AND T1.eventStartDate NOT IN (SELECT DISTINCT eventStartDate FROM #tmp WHERE eventType = ('LabUpcr') AND #tmp.person_id = T1.person_id)
+	AND T2.eventNumValue != 0 AND T2.eventNumValue IS NOT NULL
+;
+
