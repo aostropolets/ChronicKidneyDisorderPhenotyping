@@ -1,0 +1,49 @@
+IF OBJECT_ID('tempdb..#tmpCrDemo') IS NOT NULL
+	DROP TABLE #tmpCrDemo;
+CREATE TABLE #tmpCrDemo (
+	person_id INT NOT NULL
+	,crVal FLOAT
+	,crDt DATETIME2(6)
+	,crCd VARCHAR(100)
+	,ageAtMeasYear INT
+	,birthDate DATETIME2(6)
+	,genderFemale varchar(10)
+	,raceBlack varchar(10)
+	)
+INSERT INTO #tmpCrDemo
+SELECT DISTINCT J0.person_id, J0.crVal, J0.crDt, J0.crCd 
+	,J0.ageAtMeasYear, J1.birthDate
+  ,CASE WHEN J0.person_id NOT IN (SELECT DISTINCT person_id FROM #tmpMale) THEN 'YES'
+  ELSE 'NO' END AS genderFemale
+  ,CASE WHEN J0.person_id IN (SELECT DISTINCT person_id FROM #tmpBlack) THEN 'YES'
+  ELSE 'NO' END AS raceBlack
+FROM (SELECT DISTINCT person_id
+	,eventConceptId AS crCd
+	,eventNumValue AS crVal
+	,eventStartDate AS crDt
+	,CASE WHEN DATEADD(year, datediff(year, (
+				SELECT birthDate
+				FROM #tmpBDate S
+				WHERE S.person_id = T.person_id
+				), eventStartDate), (
+				SELECT birthDate
+				FROM #tmpBDate S
+				WHERE S.person_id = T.person_id
+				)) > eventStartDate
+								THEN DATEDIFF(year, (
+				SELECT birthDate
+				FROM #tmpBDate S
+				WHERE S.person_id = T.person_id
+				), eventStartDate) - 1
+							ELSE datediff(year, (
+				SELECT birthDate
+				FROM #tmpBDate S
+				WHERE S.person_id = T.person_id
+				), eventStartDate)
+		END AS ageAtMeasYear	
+FROM #tmp T
+WHERE eventType = 'LabSerumCreatinine' AND eventNumValue IS NOT NULL AND eventStartDate IS NOT NULL) J0
+LEFT JOIN
+(SELECT DISTINCT person_id, birthDate FROM #tmpBDate) J1
+ON J0.person_id=J1.person_id
+;
