@@ -1,0 +1,26 @@
+SELECT DISTINCT PATIENT_ID AS person_id
+			,observation_date AS eventStartDate
+			,NULL AS eventEndDate
+			,observation_concept_id AS eventConceptId
+			,'LabHeight' AS eventType
+			,value_as_number AS eventNumValue
+		    ,value_as_string AS eventStringValue
+		FROM $observationTable
+		WHERE observation_concept_id IN ($labHeightCmCd)
+			 AND value_as_number IS NOT NULL AND ISNUMERIC(value_as_number) =1
+			AND PATIENT_ID IN (SELECT DISTINCT PATIENT_ID FROM $cohortListTable)	
+		
+		/* height IN inch, convert it to cm */
+		UNION ALL
+		SELECT DISTINCT PATIENT_ID AS person_id
+			,observation_date AS eventStartDate
+			,NULL AS eventEndDate
+			,observation_concept_id AS eventConceptId
+			,'LabHeight' AS eventType
+			,CAST(value_as_number AS DECIMAL(9, 3)) *2.54 AS eventNumValue
+		    ,value_as_string AS eventStringValue
+		FROM $observationTable
+		WHERE observation_concept_id IN ($labHeightInchCd)
+			 AND value_as_number IS NOT NULL AND ISNUMERIC(value_as_number) =1
+			 AND PATIENT_ID IN (SELECT DISTINCT PATIENT_ID FROM $cohortListTable)
+			 
