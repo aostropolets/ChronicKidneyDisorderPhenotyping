@@ -1,0 +1,105 @@
+IF OBJECT_ID('tempdb..#tmpGFRprev') IS NOT NULL
+	DROP TABLE #tmpGFRprev;
+CREATE TABLE #tmpGFRprev (
+	person_id INT
+	,crVal FLOAT
+	,crDt DATETIME2(6)
+	,crCd VARCHAR(100)
+	,ageAtMeasYear INT
+	,birthDate DATETIME2(6)
+	,genderFactor FLOAT
+	,raceFactor FLOAT	
+	,kappaFactor FLOAT
+	,alphaFactor FLOAT
+	,minCrK FLOAT
+	,maxCrK FLOAT
+	);
+INSERT INTO #tmpGFRprev
+SELECT *
+	,CASE WHEN crVal/kappaFactor < 1 THEN crVal/kappaFactor ELSE 1 END AS minCrK
+	,CASE WHEN crVal/kappaFactor > 1 THEN crVal/kappaFactor ELSE 1 END AS maxCrK
+	  FROM (
+SELECT DISTINCT T.person_id
+		,T.crVal
+		,T.crDt
+		,T.crCd
+		,T.ageAtMeasYear
+		,T.birthDate
+		,CASE 
+			WHEN genderFemale = 'YES'
+				THEN 1.018
+			ELSE 1
+			END AS genderFactor
+		,CASE 
+			WHEN raceBlack = 'YES'
+				THEN 1.159
+			ELSE 1
+			END AS raceFactor
+		,CASE WHEN genderFemale = 'YES' 
+			 THEN 0.7
+			 ELSE 0.9
+			 END AS kappaFactor
+		,CASE WHEN genderFemale = 'YES' 
+			 THEN -0.329
+			 ELSE -0.411
+			 END AS alphaFactor
+	FROM #tmpCrDemo T
+) U
+;
+	
+/*** Block 5B: calculating eGFR ***/
+IF OBJECT_ID('tempdb..#tmpGFR') IS NOT NULL
+	DROP TABLE #tmpGFR;
+CREATE TABLE #tmpGFR (
+	person_id INT NOT NULL
+	,crVal FLOAT NOT NULL
+	,crDt DATETIME2(6) NOT NULL
+	,crCd VARCHAR(100)
+	,ageAtMeasYear INT
+	,birthDate DATETIME2(6)
+	,genderFactor FLOAT
+	,raceFactor FLOAT	
+	,kappaFactor FLOAT
+	,alphaFactor FLOAT
+	,minCrK FLOAT
+	,maxCrK FLOAT
+	,Ht nvarchar(500)
+	,eGFR FLOAT
+	);
+INSERT INTO #tmpGFR
+
+SELECT DISTINCT *
+,CASE WHEN ageAtMeasYear < 18 THEN CAST((SELECT htVal FROM #tmpCrHt H 
+			WHERE H.person_id=U.person_id AND H.crDt=U.crDt) AS nvarchar)
+	ELSE '.' END AS Ht
+,CASE WHEN ageAtMeasYear >= 18 AND crVal > 0 THEN  
+		141  
+			* POWER(CAST(minCrk AS DECIMAL(9,3)), alphaFactor)
+			* POWER(CAST(maxCrk AS DECIMAL(9,3)), -1.209)
+			* POWER(CAST(0.993 AS DECIMAL(9,3)), ageAtMeasYear) 
+			* genderFactor
+			* raceFactor
+	WHEN ageAtMeasYear < 18 AND crVal > 0 THEN  
+		0.41
+			* (SELECT htVal FROM #tmpCrHt H 
+			WHERE H.person_id=U.person_id AND H.crDt=U.crDt)
+	 	/ crVal
+	ELSE NULL END AS eGFR
+ FROM #tmpGFRprev U
+;
+
+/*** Block 5C: get most recent eGFR for patient who has eGFR ***/
+IF OBJECT_ID('tempdb..#tmpGFRrecent') IS NOT NULL
+	DROP TABLE #tmpGFRrecent;
+CREATE TABLE #tmpGFRrecent (
+	person_id INT NOT NULL
+	,eGFRrecentVal FLOAT NOT NULL
+	,eGFRrecentDt DATETIME2(6) NOT NULL
+);
+INSERT INTO #tmpGFRrecent
+SELECT person_id, eGFR AS eGFRrecentVal, crDt AS eGFRrecentDt
+FROM (
+	SELECT person_id, eGFR, crDt, ROW_NUMBER() OVER(PARTITION BY person_id ORDER by crDt DESC) AS rn
+FROM #tmpGFR
+WHERE eGFR IS NOT NULL) G
+WHERE rn =1;
