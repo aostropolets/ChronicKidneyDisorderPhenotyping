@@ -12,8 +12,8 @@ FROM
       select
         COALESCE(pe.person_id, co.person_id)                                             as person_id,
         COALESCE(pe.procedure_occurrence_id, co.condition_occurrence_id)                 as event_id,
-        COALESCE(pe.procedure_occurrence_start_date, co.condition_occurrence_start_date) as start_date,
-        COALESCE(pe.procedure_occurrence_end_date, co.condition_occurrence_end_date)     as end_date,
+        COALESCE(pe.procedure_occurrence_start_date, co.condition_start_date) as start_date,
+        COALESCE(pe.procedure_occurrence_end_date, co.condition_end_date)     as end_date,
         COALESCE(pe.procedure_concept_id, co.condition_concept_id)                       as TARGET_CONCEPT_ID,
         COALESCE(pe.visit_occurrence_id, co.visit_occurrence_id)                         as visit_occurrence_id
       FROM @target_database_schema.CKD_codes ckd
