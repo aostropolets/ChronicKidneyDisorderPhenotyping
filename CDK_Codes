@@ -1,3 +1,6 @@
+Add trashholds for extreme values
+for non-standard units
+
 TRANSPLANT
 excluded:
 proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.91  Transplant from live related donor ICD9Proc
@@ -55,25 +58,36 @@ when unit_concept_id = 8547 then -- m
 when unit_concept_id = 8582 then --cm
 else null end 
 
--- album
+-- albumin
+--  Anything above 30 mg/g may mean you have kidney disease, even if your GFR number is above 60.  
 8840 (mg/dl)
 8636 (g/L)
-mg/g
-mg/dl
+
 mg/24h
-mg/l
-mg/ml
 mmol/l
 g
 mg
 
+
+case  when unit_concept_id in (8723,8751) then value_as_number -- mg/g, mg/l
+when unit_concept_id = 8840 then value_as_number/10 --mg/dl 
+when unit_concept_id = 8861 then value_as_number/1000 --mg/ml 
+
+else null end
+;
+
+
 -- alb/cr rat
-8523 ration
-mg/mg 9565
+measuremnt_concept_id in  (3000819,3034485,3002812,3000837,46235897,	3020682,3043209,3002827,3001802,40762252,46235435,3022826,46235434,3023556,4154347)
+unit_concept_id in (8523,9565)
+
+eGFR
+measuremnt_concept_id in (3029829,3029859,3030104,3045262,36304157,36306178,40478895,40478963,40483219,40485075,40490315,40764999,40771922,42869913,
+4478827544790183,44806420,46236952,46236975,3049187,3053283,36303797)
+unit_concept_id = 9117
 
 
-
-
+check if there is 40769275	66615-6	Estimated or measured glomerular filtration rate less than 50 percent [Reported]
 
 
 24?
@@ -106,21 +120,7 @@ mg/mg 9565
 4152995	270999004	Urine total protein measurement	Procedure	Standard	Valid	Measurement	SNOMED
 4064934	171247004	Urine screening for protein	Procedure	Standard	Valid	Measurement	SNOMED
 
-3000819	13705-9	Albumin/Creatinine [Mass Ratio] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-3034485	9318-7	Albumin/Creatinine [Mass Ratio] in Urine	Lab Test	Standard	Valid	Measurement	LOINC
-3002812	14585-4	Albumin/Creatinine [Molar ratio] in Urine	Lab Test	Standard	Valid	Measurement	LOINC
-3000837	20621-9	Albumin/Creatinine [Presence] in Urine by Test strip	Lab Test	Standard	Valid	Measurement	LOINC
-46235897	76401-9	Albumin/Creatinine [Ratio] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-3020682	32294-1	Albumin/Creatinine [Ratio] in Urine
-3043209	44292-1	Microalbumin/Creatinine [Mass Ratio] in 12 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-3002827	14958-3	Microalbumin/Creatinine [Mass Ratio] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-3001802	14959-1	Microalbumin/Creatinine [Mass Ratio] in Urine	Lab Test	Standard	Valid	Measurement	LOINC
-40762252	59159-4	Microalbumin/Creatinine [Ratio] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-46235435	77254-1	Microalbumin/Creatinine [Ratio] in 24 hour Urine by Detection limit <= 1.0 mg/L	Lab Test	Standard	Valid	Measurement	LOINC
-3022826	30000-4	Microalbumin/Creatinine [Ratio] in Urine	Lab Test	Standard	Valid	Measurement	LOINC
-46235434	77253-3	Microalbumin/Creatinine [Ratio] in Urine by Detection limit <= 1.0 mg/L	Lab Test	Standard	Valid	Measurement	LOINC
-3023556	30001-2	Microalbumin/Creatinine [Ratio] in Urine by Test 
-4154347	271075006	Urine albumin/creatinine ratio measurement	Procedure	Standard	Valid	Measurement	SNOMED
+
 
 
 Specific gravity of Urine
