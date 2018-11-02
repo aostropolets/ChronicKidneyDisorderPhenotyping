@@ -60,24 +60,17 @@ else null end
 
 -- albumin
 --  Anything above 30 mg/g may mean you have kidney disease, even if your GFR number is above 60.  
-8840 (mg/dl)
-8636 (g/L)
-
-mg/24h
-mmol/l
-g
-mg
-
-
-case  when unit_concept_id in (8723,8751) then value_as_number -- mg/g, mg/l
+--Microalbumin, 24 hour urine	<30 mg/24 h
+-- conver everything to mg/g
+case  when unit_concept_id in (8723,8751,8909,8576) then value_as_number -- mg/g, mg/l,mg/24h,mg
 when unit_concept_id = 8840 then value_as_number/10 --mg/dl 
-when unit_concept_id = 8861 then value_as_number/1000 --mg/ml 
-
+when unit_concept_id in (8861,8504,8636) then value_as_number/1000 --mg/ml,g/l,g
+when unit_concept_id = 8753 value_as_number/1500--mmol/l
 else null end
 ;
 
-
 -- alb/cr rat
+-- convert to ratio
 measuremnt_concept_id in  (3000819,3034485,3002812,3000837,46235897,	3020682,3043209,3002827,3001802,40762252,46235435,3022826,46235434,3023556,4154347)
 unit_concept_id in (8523,9565)
 
@@ -85,10 +78,6 @@ eGFR
 measuremnt_concept_id in (3029829,3029859,3030104,3045262,36304157,36306178,40478895,40478963,40483219,40485075,40490315,40764999,40771922,42869913,
 4478827544790183,44806420,46236952,46236975,3049187,3053283,36303797)
 unit_concept_id = 9117
-
-
-check if there is 40769275	66615-6	Estimated or measured glomerular filtration rate less than 50 percent [Reported]
-
 
 24?
 3030511	51190-7	Albumin [Mass/volume] in 24 hour Urine by Electrophoresis
@@ -268,6 +257,7 @@ WHERE ancestor_concept_id IN (
 193782,-- End-stage renal disease
 46271022,-- Chronic kidney disease
 196991,--Chronic renal impairment
+40769275	--	Estimated or measured glomerular filtration rate less than 50 percent [Reported]
 )
 AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
@@ -296,7 +286,7 @@ FROM devv5.concept_ancestor
 WHERE ancestor_concept_id IN (
 132797,-- Sepsis
 436375,--	Hypovolemia
-201965,-- Shock
+201965-- Shock
 )
 AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
