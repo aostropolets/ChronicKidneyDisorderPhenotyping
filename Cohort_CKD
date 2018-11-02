@@ -10,15 +10,17 @@ FROM
     (
       -- Begin CDM tables Criteria
       select
-        co.person_id,
-        co.condition_occurrence_id                as event_id,
-        co.condition_occurrence_start_date as start_date,
-        co.condition_occurrence_end_date   as end_date,
-        co.condition_concept_id     as TARGET_CONCEPT_ID,
-         co.visit_occurrence_id
-      FROM @target_database_schema.CKD_codes ckd
-         JOIN @cdm_database_schema.CONDITION_OCCURRENCE co
+        COALESCE(co.person_id,m.person_id) as person_id
+        COALESCE(co.condition_occurrence_id ,m.measurement_id)               as event_id,
+        COALESCE(co.condition_start_date,measurement_start_date) as start_date,
+        COALESCE(co.condition_end_date, m.measurement_end_date)   as end_date,
+        COALESCE(co.condition_concept_id , m.measurement_concept_id)    as TARGET_CONCEPT_ID,
+        COALESCE( co.visit_occurrence_id,m.visit_occurrence_id) as visit_occurrence_id
+      FROM @target_database_schema.CKD_codes ckd)
+         LEFT JOIN @cdm_database_schema.CONDITION_OCCURRENCE co
           on (co.condition_concept_id = ckd.concept_id and ckd.category = 'CKD')
+	  LEFT JOIN  @cdm_database_schema.MEASUREMENT m
+          on (m.measurement_concept_id = ckd.concept_id and ckd.category = 'CKD')
       ) E
 -- End CDM tables Criteria
 	JOIN @cdm_database_schema.observation_period OP on E.person_id = OP.person_id and E.start_date >=  OP.observation_period_start_date and E.start_date <= op.observation_period_end_date
