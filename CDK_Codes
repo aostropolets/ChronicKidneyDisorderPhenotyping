@@ -13,228 +13,349 @@ proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT77ZZ  Resection of
 proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT78ZZ  Resection of Left Ureter, Via Natural or Artificial Opening Endoscopic ICD10  55.51
 proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   55.51  Nephroureterectomy ICD9Proc ;
 
+Ureteroneocystostomy
+Nephroureterectomy
+Venous catheterization for renal dialysis
+bypasses
+
+
 drop table ckd_codes_anna;
 create table ckd_codes_anna
   as
-    select
-      'Transplant' as category,
+select category,
       c.concept_id,
       c.concept_name,
       c.concept_code,
       c.vocabulary_id,
-      c.domain_id
-    from devv5.concept_ancestor
-      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
-      join devv5.concept c
-        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc') and
-           c.invalid_reason is null
-    where ancestor_concept_id in (
-      --------procedures------
-      4163566, -- SNOMED Renal replacement
-      4322471, -- transplant of kidney
-      4146256, -- transplant nephrectomy
-      2877118, -- ICD10 0TY0
-      2833286, -- ICD10 0TY1
-      4082531, --US scan of transpl
-      4180454, --Examination of live donor after kidney transplant
-      42690461, -- Fluoroscopy guided removal of nephrostomy tube from transplanted kidney
-      ------ conditions ----
-      42539502, -- transplanted kidney present
-      4324887 --Disorder related to renal transplantation
-    )
-          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
+      c.domain_id,
+      from 
+      ( 
+      select 'Height' as category, c.*
+      /* source units: */
+      from concept where concept_id in (4030731,3014149,3008989,3015514,3019171,3013842,3023357,3023540,3035463,3036277)
+      union all
+      select  'Height', c.*
+      from concept where concept_id in (4030731,3014149,3008989,3015514,3019171,3013842,3023357,3023540,3035463,3036277)
+      union all
+      select  'Creatinine', c.*,2.54,8533 
+      from concept where concept_id in (4030731,3014149,3008989,3015514,3019171,3013842,3023357,3023540,3035463,3036277,
+                                        4030731,3014149,3008989,3015514,3019171,3013842,3023357,3023540,3035463,3036277)
+      union all
+      select  'Albumin', c.*,2.54,8533 --	mass/time
+      from concept where concept_id in (46236963,3033268,3050449)
+      union all
+      select  'Albumin', c.*,2.54,8533 --	mass/volume
+      from concept where concept_id in (3008512,3012516,46236875,3039775,3018104)      
+      )   
 ;
-insert into ckd_codes_anna
-select
-      'Dialysis' as category,
-      c.concept_id,
-      c.concept_name,
-      c.concept_code,
-      c.vocabulary_id,
-      c.domain_id
-    from devv5.concept_ancestor
-      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
-      join devv5.concept c
-        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
-           c.invalid_reason is null
-    where ancestor_concept_id in (
-4019967, -- Dependence on renal dialysis
-4059475, --  H/O: renal dialysis
-4300837, --  Dialysis care assessment
-4300838, --  Dialysis care education
-4146536, -- Renal dialysis
-438624,  -- Complication of renal dialysis
-4026915, --  Revision of arteriovenous shunt for renal dialysis
-4289454, -- Venous catheterization for renal dialysis
-4272012,  --Insertion of cannula for hemodialysis
-4300839, --Dialysis care management
-45887996 --End-Stage Renal Disease Services
+
+--Height
+case when unit_concept_id = 8533 then value_as_number*2.54 --	Inches
+when unit_concept_id = 8547 then -- m
+when unit_concept_id = 8582 then --cm
+else null end 
+
+-- album
+8840 (mg/dl)
+8636 (g/L)
+mg/g
+mg/dl
+mg/24h
+mg/l
+mg/ml
+mmol/l
+g
+mg
+
+-- alb/cr rat
+8523 ration
+mg/mg 9565
+
+
+
+
+
+
+24?
+3030511	51190-7	Albumin [Mass/volume] in 24 hour Urine by Electrophoresis
+3008960	21059-1	Albumin [Mass/volume] in 24 hour Urine
+3018097	6941-9	Albumin [Mass/time] in 24 hour Urine by Electrophoresis
+37393656	1019891000000109	24 hour urine albumin output	Observable Entity	Standard	Valid	Observation	SNOMED
+4193719	313502007	24 hour urine albumin output measurement	Procedure	Standard	Valid	Measurement	SNOMED
+3027035	1755-8	Albumin [Mass/time] in 24 hour Urine
+043771	43607-1	Microalbumin [Mass/time] in 12 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+40766204	63474-1	Microalbumin [Mass/time] in 18 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+3005577	14956-7	Microalbumin [Mass/time] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+3040290	53532-8	Microalbumin [Mass/time] in 24 hour Urine by Detection limit <= 1.0 mg/L	Lab Test	Standard	Valid	Measurement	LOINC
+3043179	43606-3	Microalbumin [Mass/time] in 4 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+40759673	56553-1	Microalbumin [Mass/time] in 8 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+3049506	49023-5	Microalbumin [Mass/time] in Urine collected for unspecified duration	Lab Test	Standard	Valid	Measurement	LOINC
+40760483	57369-1	Microalbumin [Mass/volume] in 12 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+3005031	30003-8	Microalbumin [Mass/volume] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+3039436	53530-2	Microalbumin [Mass/volume] in 24 hour Urine by Detection limit <= 1.0 mg/L	Lab Test	Standard	Valid	Measurement	LOINC
+3046828	43605-5	Microalbumin [Mass/volume] in 4 hour Urine
+40761549	58448-2	Microalbumin ug/min [Mass/time] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+3000034	14957-5	Microalbumin urine	Lab Test	Standard	Valid	Measurement	LOINC
+
+
+
+4017498	104486009	Albumin measurement, urine, quantitative
+2212188	82043	Albumin; urine (eg, microalbumin), quantitative	CPT4	Standard	Valid	Measurement	CPT4
+2212189	82044	Albumin; urine (eg, microalbumin), semiquantitative (eg, reagent strip assay)
+4152996	271000000	Urine albumin measurement	Procedure	Standard	Valid	Measurement	SNOMED
+4152995	270999004	Urine total protein measurement	Procedure	Standard	Valid	Measurement	SNOMED
+4064934	171247004	Urine screening for protein	Procedure	Standard	Valid	Measurement	SNOMED
+
+3000819	13705-9	Albumin/Creatinine [Mass Ratio] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+3034485	9318-7	Albumin/Creatinine [Mass Ratio] in Urine	Lab Test	Standard	Valid	Measurement	LOINC
+3002812	14585-4	Albumin/Creatinine [Molar ratio] in Urine	Lab Test	Standard	Valid	Measurement	LOINC
+3000837	20621-9	Albumin/Creatinine [Presence] in Urine by Test strip	Lab Test	Standard	Valid	Measurement	LOINC
+46235897	76401-9	Albumin/Creatinine [Ratio] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+3020682	32294-1	Albumin/Creatinine [Ratio] in Urine
+3043209	44292-1	Microalbumin/Creatinine [Mass Ratio] in 12 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+3002827	14958-3	Microalbumin/Creatinine [Mass Ratio] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+3001802	14959-1	Microalbumin/Creatinine [Mass Ratio] in Urine	Lab Test	Standard	Valid	Measurement	LOINC
+40762252	59159-4	Microalbumin/Creatinine [Ratio] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
+46235435	77254-1	Microalbumin/Creatinine [Ratio] in 24 hour Urine by Detection limit <= 1.0 mg/L	Lab Test	Standard	Valid	Measurement	LOINC
+3022826	30000-4	Microalbumin/Creatinine [Ratio] in Urine	Lab Test	Standard	Valid	Measurement	LOINC
+46235434	77253-3	Microalbumin/Creatinine [Ratio] in Urine by Detection limit <= 1.0 mg/L	Lab Test	Standard	Valid	Measurement	LOINC
+3023556	30001-2	Microalbumin/Creatinine [Ratio] in Urine by Test 
+4154347	271075006	Urine albumin/creatinine ratio measurement	Procedure	Standard	Valid	Measurement	SNOMED
+
+
+Specific gravity of Urine
+
+
+select * from ckd_codes
+where query_template like '%lab%';
+
+
+
+      
+
+INSERT INTO ckd_codes_anna
+(
+  category,
+  concept_id,
+  concept_name,
+  concept_code,
+  vocabulary_id,
+  domain_id
 )
-          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
-;
+SELECT 'Transplant' AS category,
+       c.concept_id,
+       c.concept_name,
+       c.concept_code,
+       c.vocabulary_id,
+       c.domain_id
+FROM devv5.concept_ancestor
+  LEFT JOIN devv5.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN devv5.concept c
+    ON concept_id_1 = c.concept_id
+   AND cr.invalid_reason IS NULL
+   AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc') 
+   AND c.invalid_reason IS NULL
+WHERE ancestor_concept_id IN (
+--------procedures------
+4163566,-- SNOMED Renal replacement
+4322471,-- transplant of kidney
+4146256,-- transplant nephrectomy
+2877118,-- ICD10 0TY0
+2833286,-- ICD10 0TY1
+4082531,--US scan of transpl
+4180454,--Examination of live donor after kidney transplant
+42690461,-- Fluoroscopy guided removal of nephrostomy tube from transplanted kidney
+------ conditions ----
+42539502,-- transplanted kidney present
+4324887--Disorder related to renal transplantation
+)
+AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
--- select * from devv5.concept where lower(concept_name) like '%bypass%artery%arm%vein%';-- add another
+INSERT INTO ckd_codes_anna
+(
+  category,
+  concept_id,
+  concept_name,
+  concept_code,
+  vocabulary_id,
+  domain_id
+)
+SELECT 'Dialysis' AS category,
+       c.concept_id,
+       c.concept_name,
+       c.concept_code,
+       c.vocabulary_id,
+       c.domain_id
+FROM devv5.concept_ancestor
+  LEFT JOIN devv5.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN devv5.concept c
+    ON concept_id_1 = c.concept_id
+   AND cr.invalid_reason IS NULL
+   AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to') 
+   AND c.invalid_reason IS NULL
+WHERE ancestor_concept_id IN (
+4019967,-- Dependence on renal dialysis
+4059475,--  H/O: renal dialysis
+4300837,--  Dialysis care assessment
+4300838,--  Dialysis care education
+4146536,-- Renal dialysis
+438624,-- Complication of renal dialysis
+4026915,--  Revision of arteriovenous shunt for renal dialysis
+4289454,-- Venous catheterization for renal dialysis
+4272012,--Insertion of cannula for hemodialysis
+4300839,--Dialysis care management
+45887996--End-Stage Renal Disease Services
+)
+AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
+INSERT INTO ckd_codes_anna
+(
+  (category,concept_id,concept_name,concept_code,vocabulary_id,domain_id)
+)
+SELECT 'AKD' AS category,
+       c.concept_id,
+       c.concept_name,
+       c.concept_code,
+       c.vocabulary_id,
+       c.domain_id
+FROM devv5.concept_ancestor
+  LEFT JOIN devv5.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN devv5.concept c
+    ON concept_id_1 = c.concept_id
+   AND cr.invalid_reason IS NULL
+   AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to') 
+   AND c.invalid_reason IS NULL
+WHERE ancestor_concept_id IN (
+197320,--Acute renal failure syndrome
+444044,--Acute tubular necrosis
+761083,--Acute injury of kidney -- coundn't find a common parent w/o nephritis
+37116430,--Acute kidney failure stage 1
+37116431,--Acute kidney failure stage 2
+37116432,--Acute kidney failure stage 3
+4228827,--Acute milk alkali syndrome
+4111399,--Acute pericarditis secondary to uremia
+4232873,--Acute postoperative renal failure
+40481064,--Acute renal cortical necrosis
+4126305,--Acute renal impairment
+37399017,--Hemorrhagic fever with renal syndrome
+37116834,--Postpartum acute renal failure
+42536547--Ischemia of kidney (in SNOMED only acute))
+AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
-insert into ckd_codes_anna
-select
-      'AKD' as category,
-      c.concept_id,
-      c.concept_name,
-      c.concept_code,
-      c.vocabulary_id,
-      c.domain_id
-    from devv5.concept_ancestor
-      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
-      join devv5.concept c
-        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
-           c.invalid_reason is null
-    where ancestor_concept_id in (
+INSERT INTO ckd_codes_anna
+(
+  category,
+  concept_id,
+  concept_name,
+  concept_code,
+  vocabulary_id,
+  domain_id
+)
+SELECT 'CKD' AS category,
+       c.concept_id,
+       c.concept_name,
+       c.concept_code,
+       c.vocabulary_id,
+       c.domain_id
+FROM devv5.concept_ancestor
+  LEFT JOIN devv5.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN devv5.concept c
+    ON concept_id_1 = c.concept_id
+   AND cr.invalid_reason IS NULL
+   AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to') 
+   AND c.invalid_reason IS NULL
+WHERE ancestor_concept_id IN (
+193782,-- End-stage renal disease
+46271022,-- Chronic kidney disease
+196991,--Chronic renal impairment
+)
+AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
-197320, --Acute renal failure syndrome
-444044, --Acute tubular necrosis
-761083, --Acute injury of kidney -- coundn't find a common parent w/o nephritis
-37116430, --Acute kidney failure stage 1
-37116431, --Acute kidney failure stage 2
-37116432, --Acute kidney failure stage 3
-4228827, --Acute milk alkali syndrome
-4111399, --Acute pericarditis secondary to uremia
-4232873, --Acute postoperative renal failure
-40481064, --Acute renal cortical necrosis
-4126305, --Acute renal impairment
-37399017, --Hemorrhagic fever with renal syndrome
-37116834, --Postpartum acute renal failure
-42536547  --Ischemia of kidney (in SNOMED only acute)
- )
-          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
-;
-insert into ckd_codes_anna
-select
-      'CKD' as category,
-      c.concept_id,
-      c.concept_name,
-      c.concept_code,
-      c.vocabulary_id,
-      c.domain_id
-    from devv5.concept_ancestor
-      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
-      join devv5.concept c
-        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
-           c.invalid_reason is null
-    where ancestor_concept_id in (
+INSERT INTO ckd_codes_anna
+(
+  category,
+  concept_id,
+  concept_name,
+  concept_code,
+  vocabulary_id,
+  domain_id
+)
+SELECT 'Other_Acute' AS category,
+       c.concept_id,
+       c.concept_name,
+       c.concept_code,
+       c.vocabulary_id,
+       c.domain_id
+FROM devv5.concept_ancestor
+  LEFT JOIN devv5.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN devv5.concept c
+    ON concept_id_1 = c.concept_id
+   AND cr.invalid_reason IS NULL
+   AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to') 
+   AND c.invalid_reason IS NULL
+WHERE ancestor_concept_id IN (
+132797,-- Sepsis
+436375,--	Hypovolemia
+201965,-- Shock
+)
+AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
-193782,	-- End-stage renal disease
-46271022, -- Chronic kidney disease
-196991, --Chronic renal impairment
-
- )
-          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
-;
-insert into ckd_codes_anna
-select
-      'Other_Acute' as category,
-      c.concept_id,
-      c.concept_name,
-      c.concept_code,
-      c.vocabulary_id,
-      c.domain_id
-    from devv5.concept_ancestor
-      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
-      join devv5.concept c
-        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
-           c.invalid_reason is null
-    where ancestor_concept_id in (
-
-132797, -- Sepsis
-436375, --	Hypovolemia
-201965, -- Shock
- )
-          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
-;
 -- didn't get additional codes
+INSERT INTO ckd_codes_anna
+(
+  category,
+  concept_id,
+  concept_name,
+  concept_code,
+  vocabulary_id,
+  domain_id
+)
+SELECT 'CKD' AS category,
+       c.concept_id,
+       c.concept_name,
+       c.concept_code,
+       c.vocabulary_id,
+       c.domain_id
+FROM devv5.concept_ancestor
+  LEFT JOIN devv5.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN devv5.concept c
+    ON concept_id_1 = c.concept_id
+   AND cr.invalid_reason IS NULL
+   AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to') 
+   AND c.invalid_reason IS NULL
+WHERE ancestor_concept_id IN (
+193782,-- End-stage renal disease
+46271022,-- Chronic kidney disease
+196991,--Chronic renal impairment
+)
+AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
-
-insert into ckd_codes_anna
-select
-      'CKD' as category,
-      c.concept_id,
-      c.concept_name,
-      c.concept_code,
-      c.vocabulary_id,
-      c.domain_id
-    from devv5.concept_ancestor
-      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
-      join devv5.concept c
-        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
-           c.invalid_reason is null
-    where ancestor_concept_id in (
-
-193782,	-- End-stage renal disease
-46271022, -- Chronic kidney disease
-196991, --Chronic renal impairment
-
- )
-          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
-;
-
-insert into ckd_codes_anna
-select
-   'Other_KD' as category,
-      c.concept_id,
-      c.concept_name,
-      c.concept_code,
-      c.vocabulary_id,
-      c.domain_id
-    from devv5.concept_ancestor
-      left join devv5.concept_relationship cr on cr.concept_id_2 = descendant_concept_id
-      join devv5.concept c
-        on concept_id_1 = c.concept_id and cr.invalid_reason is null and relationship_id in ('Maps to','Maps to value','Has asso proc','Followed by','Has due to') and
-           c.invalid_reason is null
-    where ancestor_concept_id in (
-
-198124, --kidney disease
-75650, --proteinuria
-193955, --Tuberculosis of kidney
-201313 --Hypertensive renal disease
- )
-          and c.vocabulary_id not in ('MeSH', 'PPI', 'SUS')
-;
--- include nephrectomies
---urether disorders?
-
--- LABS
-
-select * from devv5.concept where lower(concept_name) like 'creatinine%'
-  ;
-
-
-select * from sources.loinc
-where lower(component) like '%creatinine%'
-limit 20
-;
-
-
-select * from ckd_codes where query_template like '%lab%';
-
-
-
-
-select * from concept_relationship where concept_id_1=37110379 and concept_id_2 = 4146536;
-
-
-excl   Peritoneal dialysis catheter in situ
-;
-select * from ckd_codes where concept_code not in (select concept_code from ckd_codes_anna)
-  and query_template like '%Dialys%';
-
-;
-0. 43021422  473195006  Normal renal function of transplanted kidney exclude?
-1. Other nephrectomies
-2. check deprecated
-
-;
-
-
-select * from devv5.concept where lower(concept_name) like '%transpl%nephrect%' or lower(concept_name) like '%transpl%kidney%' or lower(concept_name) like '%kidney%transpl%'
-and vocabulary_id = 'SNOMED' and domain_id = 'Procedure';
-
+INSERT INTO ckd_codes_anna
+(
+  category,
+  concept_id,
+  concept_name,
+  concept_code,
+  vocabulary_id,
+  domain_id
+)
+SELECT 'Other_KD' AS category,
+       c.concept_id,
+       c.concept_name,
+       c.concept_code,
+       c.vocabulary_id,
+       c.domain_id
+FROM devv5.concept_ancestor
+  LEFT JOIN devv5.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN devv5.concept c
+    ON concept_id_1 = c.concept_id
+   AND cr.invalid_reason IS NULL
+   AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to') 
+   AND c.invalid_reason IS NULL
+WHERE ancestor_concept_id IN 
+(198124, --kidney disease
+75650,--proteinuria
+193955,--Tuberculosis of kidney
+201313--Hypertensive renal disease
+)
+AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
