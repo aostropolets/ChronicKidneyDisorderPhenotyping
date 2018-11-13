@@ -34,23 +34,33 @@ select category,
       from 
       ( 
       select 'Height' as category, c.*
-      /* source units: */
       from concept where concept_id in (4030731,3014149,3008989,3015514,3019171,3013842,3023357,3023540,3035463,3036277)
       union all
-      select  'Height', c.*
-      from concept where concept_id in (4030731,3014149,3008989,3015514,3019171,3013842,3023357,3023540,3035463,3036277)
-      union all
-      select  'Creatinine', c.*,2.54,8533 
+      select  'Creatinine', c.*
       from concept where concept_id in (4030731,3014149,3008989,3015514,3019171,3013842,3023357,3023540,3035463,3036277,
                                         4030731,3014149,3008989,3015514,3019171,3013842,3023357,3023540,3035463,3036277)
       union all
-      select  'Albumin', c.*,2.54,8533 --	mass/time
+      select  'Albumin', c.*--	mass/time
       from concept where concept_id in (46236963,3033268,3050449)
       union all
-      select  'Albumin', c.*,2.54,8533 --	mass/volume
-      from concept where concept_id in (3008512,3012516,46236875,3039775,3018104)      
-      )   
+      select  'Albumin', c.*--	mass/volume
+      from concept where concept_id in (3008512,3012516,46236875,3039775,3018104)    
+      union all
+      select  'Albumin', c.*-- albumin general codes
+      from concept where concept_id in (4017498,2212188,2212189,4152996)
+      union all
+      select 'Protein',c.* -- general
+      from concept where concept_id in (4152995,4064934)
+      union all
+      select  'Albumin', c.*
+      from concept where concept_id in  (3000819,3034485,3002812,3000837,46235897,3020682,3043209,3002827,3001802,40762252,46235435,3022826,46235434,3023556,4154347)
+      union all
+      select 'eGFR',c.* 
+      from concept where concept_id in (3029829,3029859,3030104,3045262,36304157,36306178,40478895,40478963,40483219,40485075,40490315,40764999,40771922,42869913,
+      4478827544790183,44806420,46236952,46236975,3049187,3053283,36303797)   
 ;
+
+'Albumin', c.*,2.54,8533 --	mass/volume
 
 --Height
 case when unit_concept_id = 8533 then value_as_number*2.54 --	Inches
@@ -102,12 +112,7 @@ unit_concept_id = 9117
 
 
 
-4017498	104486009	Albumin measurement, urine, quantitative
-2212188	82043	Albumin; urine (eg, microalbumin), quantitative	CPT4	Standard	Valid	Measurement	CPT4
-2212189	82044	Albumin; urine (eg, microalbumin), semiquantitative (eg, reagent strip assay)
-4152996	271000000	Urine albumin measurement	Procedure	Standard	Valid	Measurement	SNOMED
-4152995	270999004	Urine total protein measurement	Procedure	Standard	Valid	Measurement	SNOMED
-4064934	171247004	Urine screening for protein	Procedure	Standard	Valid	Measurement	SNOMED
+
 
 
 
