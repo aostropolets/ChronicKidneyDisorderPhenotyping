@@ -1,25 +1,21 @@
 Add trashholds for extreme values
 for non-standard units
 
-TRANSPLANT
+/***** TRANSPLANT
 excluded:
-proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.91  Transplant from live related donor ICD9Proc
-proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.92  Transplant from live non-related donor ICD9Proc
-proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   00.93  Transplant from cadaver  ICD9Proc
-proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT60ZZ  Resection of Right Ureter, Open Approach ICD10  55.51
-proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT64ZZ  Resection of Right Ureter, Percutaneous Endoscopic Approach  ICD10  55.51
-proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT67ZZ  Resection of Right Ureter, Via Natural or Artificial Opening ICD10  55.51
-proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT68ZZ  Resection of Right Ureter, Via Natural or Artificial Opening Endoscopic  ICD10  55.51
-proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT70ZZ  Resection of Left Ureter, Open Approach  ICD10  55.51
-proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT74ZZ  Resection of Left Ureter, Percutaneous Endoscopic Approach ICD10  55.51
-proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT77ZZ  Resection of Left Ureter, Via Natural or Artificial Opening  ICD10  55.51
-proc.kidneyTransplant.icd10  $procKidneyTransplantIcd10Cd  0TT78ZZ  Resection of Left Ureter, Via Natural or Artificial Opening Endoscopic ICD10  55.51
-proc.kidneyTransplant.Icd9 $procKidneyTransplantIcd9Cd   55.51  Nephroureterectomy ICD9Proc ;
+Transplant from live donor
+Transplant from cadaver 
+Resection of Right Ureter, Open Approach
+Resection of Right Ureter, Percutaneous Endoscopic Approach
+Resection of Right Ureter, Via Natural or Artificial Opening
+Resection of Right Ureter, Via Natural or Artificial Opening Endoscopic
+Nephroureterectomy ;
 
 Ureteroneocystostomy
 Nephroureterectomy
 Venous catheterization for renal dialysis
 bypasses
+********/
 
 drop table ckd_codes_anna;
 create table ckd_codes_anna
@@ -32,101 +28,37 @@ select category,
       c.domain_id,
       from 
       ( 
-      select 'Height' as category, c.*
+      select 'height' as category, c.*
       from concept where concept_id in (4030731,3014149,3008989,3015514,3019171,3013842,3023357,3023540,3035463,3036277)
       union all
-      select  'Creatinine', c.*
+      select  'creatinine', c.*
       from concept where concept_id in (4030731,3014149,3008989,3015514,3019171,3013842,3023357,3023540,3035463,3036277,
                                         4030731,3014149,3008989,3015514,3019171,3013842,3023357,3023540,3035463,3036277)
       union all
-      select  'Albumin', c.*--	mass/time
-      from concept where concept_id in (46236963,3033268,3050449)
+      select  'albumin', c.*--	mass/time
+      from concept where concept_id in (46236963,3033268,3050449,3018097,3027035,043771,40766204,3005577,3040290,3043179,40759673,3049506,40761549)
       union all
-      select  'Albumin', c.*--	mass/volume
-      from concept where concept_id in (3008512,3012516,46236875,3039775,3018104)    
+      select  'albumin', c.*--	mass/volume
+      from concept where concept_id in (3008512,3012516,46236875,3039775,3018104,3030511,3008960,37393656,4193719,40760483,3005031,3039436,3046828,3000034)    
       union all
-      select  'Albumin', c.*-- albumin general codes
+      select  'albumin', c.*-- albumin general codes
       from concept where concept_id in (4017498,2212188,2212189,4152996)
       union all
-      select 'Protein',c.* -- general
+      select 'protein',c.* -- general
       from concept where concept_id in (4152995,4064934)
       union all
-      select  'Alb/Creat_ratio', c.*
+      select  'alb/creat_ratio', c.*
       from concept where concept_id in  (3000819,3034485,3002812,3000837,46235897,3020682,3043209,3002827,3001802,40762252,
                                          46235435,3022826,46235434,3023556,4154347)
       union all
-      select 'eGFR',c.* 
+      select 'egfr',c.* 
       from concept where concept_id in (3029829,3029859,3030104,3045262,36304157,36306178,40478895,40478963,40483219,40485075,
                                         40490315,40764999,40771922,42869913,4478827544790183,44806420,46236952,46236975,3049187,
                                         3053283,36303797)   
+      union all
+      select 'gravity',c.*
+      from concept where concept_id in (2212165,2212166,2212577,3000330,3019150,3029991,3032448,3033543,3034076,3039919,3043812,4147583)
 ;
-
-'Albumin', c.*,2.54,8533 --	mass/volume
-
---Height
-case when unit_concept_id = 8533 then value_as_number*2.54 --	Inches
-when unit_concept_id = 8547 then -- m
-when unit_concept_id = 8582 then --cm
-else null end 
-
--- albumin
---  Anything above 30 mg/g may mean you have kidney disease, even if your GFR number is above 60.  
---Microalbumin, 24 hour urine	<30 mg/24 h
--- conver everything to mg/g
-case  when unit_concept_id in (8723,8751,8909,8576) then value_as_number -- mg/g, mg/l,mg/24h,mg
-when unit_concept_id = 8840 then value_as_number/10 --mg/dl 
-when unit_concept_id in (8861,8504,8636) then value_as_number/1000 --mg/ml,g/l,g
-when unit_concept_id = 8753 value_as_number/1500--mmol/l
-else null end
-;
-
--- alb/cr rat
--- convert to ratio
-unit_concept_id in (8523,9565)
-
-eGFR
-measuremnt_concept_id in (3029829,3029859,3030104,3045262,36304157,36306178,40478895,40478963,40483219,40485075,40490315,40764999,40771922,42869913,
-4478827544790183,44806420,46236952,46236975,3049187,3053283,36303797)
-unit_concept_id = 9117
-
-24?
-3030511	51190-7	Albumin [Mass/volume] in 24 hour Urine by Electrophoresis
-3008960	21059-1	Albumin [Mass/volume] in 24 hour Urine
-3018097	6941-9	Albumin [Mass/time] in 24 hour Urine by Electrophoresis
-37393656	1019891000000109	24 hour urine albumin output	Observable Entity	Standard	Valid	Observation	SNOMED
-4193719	313502007	24 hour urine albumin output measurement	Procedure	Standard	Valid	Measurement	SNOMED
-3027035	1755-8	Albumin [Mass/time] in 24 hour Urine
-043771	43607-1	Microalbumin [Mass/time] in 12 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-40766204	63474-1	Microalbumin [Mass/time] in 18 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-3005577	14956-7	Microalbumin [Mass/time] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-3040290	53532-8	Microalbumin [Mass/time] in 24 hour Urine by Detection limit <= 1.0 mg/L	Lab Test	Standard	Valid	Measurement	LOINC
-3043179	43606-3	Microalbumin [Mass/time] in 4 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-40759673	56553-1	Microalbumin [Mass/time] in 8 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-3049506	49023-5	Microalbumin [Mass/time] in Urine collected for unspecified duration	Lab Test	Standard	Valid	Measurement	LOINC
-40760483	57369-1	Microalbumin [Mass/volume] in 12 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-3005031	30003-8	Microalbumin [Mass/volume] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-3039436	53530-2	Microalbumin [Mass/volume] in 24 hour Urine by Detection limit <= 1.0 mg/L	Lab Test	Standard	Valid	Measurement	LOINC
-3046828	43605-5	Microalbumin [Mass/volume] in 4 hour Urine
-40761549	58448-2	Microalbumin ug/min [Mass/time] in 24 hour Urine	Lab Test	Standard	Valid	Measurement	LOINC
-3000034	14957-5	Microalbumin urine	Lab Test	Standard	Valid	Measurement	LOINC
-
-
-
-
-
-
-
-
-Specific gravity of Urine
-
-2212165,2212166,2212577,3000330,3019150,3029991,3032448,3033543,3034076,3039919,3043812,4147583
-
-select * from ckd_codes
-where query_template like '%lab%';
-
-
-
-      
 
 INSERT INTO ckd_codes_anna
 (
