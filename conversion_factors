@@ -1,0 +1,24 @@
+--Height
+case when unit_concept_id = 8533 then value_as_number*2.54 --	Inches
+when unit_concept_id = 8547 then -- m
+when unit_concept_id = 8582 then --cm
+else null end 
+
+-- albumin
+'Albumin', c.*,2.54,8533 --	mass/volume
+-- Anything above 30 mg/g may mean you have kidney disease, even if your GFR number is above 60.  
+--Microalbumin, 24 hour urine	<30 mg/24 h
+-- conver everything to mg/g
+case  when unit_concept_id in (8723,8751,8909,8576) then value_as_number -- mg/g, mg/l,mg/24h,mg
+when unit_concept_id = 8840 then value_as_number/10 --mg/dl 
+when unit_concept_id in (8861,8504,8636) then value_as_number/1000 --mg/ml,g/l,g
+when unit_concept_id = 8753 value_as_number/1500--mmol/l
+else null end
+;
+
+-- alb/cr rat
+-- convert to ratio
+unit_concept_id in (8523,9565)
+
+eGFR
+unit_concept_id = 9117
