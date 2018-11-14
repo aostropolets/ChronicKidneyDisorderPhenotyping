@@ -21,10 +21,9 @@ Nephroureterectomy
 Venous catheterization for renal dialysis
 bypasses
 
-
 drop table ckd_codes_anna;
 create table ckd_codes_anna
-  as
+as
 select category,
       c.concept_id,
       c.concept_name,
@@ -52,12 +51,14 @@ select category,
       select 'Protein',c.* -- general
       from concept where concept_id in (4152995,4064934)
       union all
-      select  'Albumin', c.*
-      from concept where concept_id in  (3000819,3034485,3002812,3000837,46235897,3020682,3043209,3002827,3001802,40762252,46235435,3022826,46235434,3023556,4154347)
+      select  'Alb/Creat_ratio', c.*
+      from concept where concept_id in  (3000819,3034485,3002812,3000837,46235897,3020682,3043209,3002827,3001802,40762252,
+                                         46235435,3022826,46235434,3023556,4154347)
       union all
       select 'eGFR',c.* 
-      from concept where concept_id in (3029829,3029859,3030104,3045262,36304157,36306178,40478895,40478963,40483219,40485075,40490315,40764999,40771922,42869913,
-      4478827544790183,44806420,46236952,46236975,3049187,3053283,36303797)   
+      from concept where concept_id in (3029829,3029859,3030104,3045262,36304157,36306178,40478895,40478963,40483219,40485075,
+                                        40490315,40764999,40771922,42869913,4478827544790183,44806420,46236952,46236975,3049187,
+                                        3053283,36303797)   
 ;
 
 'Albumin', c.*,2.54,8533 --	mass/volume
@@ -81,7 +82,6 @@ else null end
 
 -- alb/cr rat
 -- convert to ratio
-measuremnt_concept_id in  (3000819,3034485,3002812,3000837,46235897,	3020682,3043209,3002827,3001802,40762252,46235435,3022826,46235434,3023556,4154347)
 unit_concept_id in (8523,9565)
 
 eGFR
@@ -119,6 +119,7 @@ unit_concept_id = 9117
 
 Specific gravity of Urine
 
+2212165,2212166,2212577,3000330,3019150,3029991,3032448,3033543,3034076,3039919,3043812,4147583
 
 select * from ckd_codes
 where query_template like '%lab%';
