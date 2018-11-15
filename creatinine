@@ -9,41 +9,23 @@ CREATE TABLE #tmpCrDemo (
 	,birthDate DATETIME2(6)
 	,genderFemale varchar(10)
 	,raceBlack varchar(10)
-	)
-INSERT INTO #tmpCrDemo
-SELECT DISTINCT J0.person_id, J0.crVal, J0.crDt, J0.crCd 
-	,J0.ageAtMeasYear, J1.birthDate
-  ,CASE WHEN J0.person_id NOT IN (SELECT DISTINCT person_id FROM #tmpMale) THEN 'YES'
-  ELSE 'NO' END AS genderFemale
-  ,CASE WHEN J0.person_id IN (SELECT DISTINCT person_id FROM #tmpBlack) THEN 'YES'
-  ELSE 'NO' END AS raceBlack
-FROM (SELECT DISTINCT person_id
-	,eventConceptId AS crCd
-	,eventNumValue AS crVal
-	,eventStartDate AS crDt
-	,CASE WHEN DATEADD(year, datediff(year, (
-				SELECT birthDate
-				FROM #tmpBDate S
-				WHERE S.person_id = T.person_id
-				), eventStartDate), (
-				SELECT birthDate
-				FROM #tmpBDate S
-				WHERE S.person_id = T.person_id
-				)) > eventStartDate
-								THEN DATEDIFF(year, (
-				SELECT birthDate
-				FROM #tmpBDate S
-				WHERE S.person_id = T.person_id
-				), eventStartDate) - 1
-							ELSE datediff(year, (
-				SELECT birthDate
-				FROM #tmpBDate S
-				WHERE S.person_id = T.person_id
-				), eventStartDate)
-		END AS ageAtMeasYear	
-FROM #tmp T
-WHERE eventType = 'LabSerumCreatinine' AND eventNumValue IS NOT NULL AND eventStartDate IS NOT NULL) J0
-LEFT JOIN
-(SELECT DISTINCT person_id, birthDate FROM #tmpBDate) J1
-ON J0.person_id=J1.person_id
+	);
+	
+SELECT
+		person_id, gender_concept_id, race_concept_id,  
+		measurement_start_date, extract(year from measurement_start_date) - year_of_birth as ageAtMeasYear
+		measurement_concept_id, 
+		case 
+		when unit_concept_id = 8840 then value_as_number-- mg/dl
+		when unit_concept_id = 8842 then value_as_number*0.0001 -- ng/ml
+		when unit_concept_id = 8749 then value_as_number*0.0113  -- mcmol/l
+		when unit_concept_id = when unit_concept_id =9586 then value_as_number*11300 -- mol/l
+		when unit_concept_id = 8753 then value_as_number*11.3 -- mmol/l 
+		when unit_concept_id = 8636 then value_as_number*1000-- g/l
+		else null end as value_as_number
+		value_as_concept_id,
+		value_as_string
+FROM MEASUREMENT
+JOIN PERSON on
+JOIN CKD_codes on measurement_concept_id = concept_id and category = 'creatinine' 
 ;
