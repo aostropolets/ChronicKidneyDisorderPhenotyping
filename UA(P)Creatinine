@@ -32,3 +32,12 @@ SELECT DISTINCT T1.person_id
 	AND T2.eventNumValue != 0 AND T2.eventNumValue IS NOT NULL
 ;
 
+SELECT DISTINT person_id,
+measurement_start_date,
+measurement_concept_id
+'alb/cr_rat',
+case when unit_concept_id in (8523,9565) then value_as_number else null end,
+value_as_string,
+value_as_concept_id
+from MEASUREMENT
+;
