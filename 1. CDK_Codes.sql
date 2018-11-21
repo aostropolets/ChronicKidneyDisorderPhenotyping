@@ -17,8 +17,7 @@ Venous catheterization for renal dialysis
 bypasses
 ********/
 
-drop table ckd_codes;
-create table ckd_codes
+create temp table @target_database_schema.ckd_codes
 as
 select c.category,
       c.concept_id,
@@ -31,12 +30,12 @@ select c.category,
           select
             'height' as category,
             c.*
-          from concept c
+          from @vocabulary_database_schema.concept c
           where concept_id in (4030731, 3014149, 3008989, 3015514, 3019171, 3013842, 3023357, 3023540, 3035463, 3036277)
           union all
           select
           /*
-          select * from concept where
+          select * from @vocabulary_database_schema.concept where
   vocabulary_id in ('LOINC','SNOMED') and standard_concept = 'S' and domain_id = 'Measurement' and lower(concept_name) like
     'creatinine%' and concept_class_id not in ('Clinical Finding') and not concept_name ~* 'stool|vitreous|synovial|amniotic|cerebral|challenge|clearance';
 */
@@ -55,33 +54,33 @@ select c.category,
           select
             'albumin',
             c.* --	mass/time
-          from concept c
+          from @vocabulary_database_schema.concept c
           where concept_id in
                 (46236963, 3033268, 3050449, 3018097, 3027035, 043771, 40766204, 3005577, 3040290, 3043179, 40759673, 3049506, 40761549)
           union all
           select
             'albumin',
             c.* --	mass/volume
-          from concept c
+          from @vocabulary_database_schema.concept c
           where concept_id in
                 (3008512, 3012516, 46236875, 3039775, 3018104, 3030511, 3008960, 37393656, 4193719, 40760483, 3005031, 3039436, 3046828, 3000034)
           union all
           select
             'albumin',
             c.* -- albumin general codes
-          from concept c
+          from @vocabulary_database_schema.concept c
           where concept_id in (4017498, 2212188, 2212189, 4152996)
           union all
           select
             'protein',
             c.* -- general
-          from concept c
+          from @vocabulary_database_schema.concept c
           where concept_id in (4152995, 4064934)
           union all
           select
             'alb/creat_ratio',
             c.*
-          from concept c
+          from @vocabulary_database_schema.concept c
           where
             concept_id in (3000819, 3034485, 3002812, 3000837, 46235897, 3020682, 3043209, 3002827, 3001802, 40762252,
                                     46235435, 3022826, 46235434, 3023556, 4154347)
@@ -89,7 +88,7 @@ select c.category,
           select
             'egfr',
             c.*
-          from concept c
+          from @vocabulary_database_schema.concept c
           where concept_id in
                 (3029829, 3029859, 3030104, 3045262, 36304157, 36306178, 40478895, 40478963, 40483219, 40485075,
                   40490315, 40764999, 40771922, 42869913, 4478827544790183, 44806420, 46236952, 46236975, 3049187,
@@ -98,7 +97,7 @@ select c.category,
           select
             'gravity',
             c.*
-          from concept c
+          from @vocabulary_database_schema.concept c
           where concept_id in
                 (2212165, 2212166, 2212577, 3000330, 3019150, 3029991, 3032448, 3033543, 3034076, 3039919, 3043812, 4147583)
         ) c
@@ -113,34 +112,34 @@ INSERT INTO ckd_codes
   vocabulary_id,
   domain_id
 )
-  SELECT
-    'Dialysis' AS category,
-    c.concept_id,
-    c.concept_name,
-    c.concept_code,
-    c.vocabulary_id,
-    c.domain_id
-  FROM concept_ancestor
-    LEFT JOIN concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-    JOIN concept c
-      ON concept_id_1 = c.concept_id
-         AND cr.invalid_reason IS NULL
-         AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to')
-         AND c.invalid_reason IS NULL
-  WHERE ancestor_concept_id IN (
-    4019967, -- Dependence on renal dialysis
-    4059475, --  H/O: renal dialysis
-    4300837, --  Dialysis care assessment
-    4300838, --  Dialysis care education
-    4146536, -- Renal dialysis
-    438624, -- Complication of renal dialysis
-    4026915, --  Revision of arteriovenous shunt for renal dialysis
-    4289454, -- Venous catheterization for renal dialysis
-    4272012, --Insertion of cannula for hemodialysis
-    4300839, --Dialysis care management
-    45887996--End-Stage Renal Disease Services
-  )
-        AND c.vocabulary_id NOT IN ('MeSH', 'PPI', 'SUS');
+SELECT 'transplant' AS category,
+       c.concept_id,
+       c.concept_name,
+       c.concept_code,
+       c.vocabulary_id,
+       c.domain_id
+FROM @vocabulary_database_schema.concept_ancestor
+  JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN @vocabulary_database_schema.concept c
+    ON concept_id_1 = c.concept_id
+   AND cr.invalid_reason IS NULL
+   AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc') 
+   AND c.invalid_reason IS NULL
+WHERE ancestor_concept_id IN (
+--------procedures------
+4163566,-- SNOMED Renal replacement
+4322471,-- transplant of kidney
+4146256,-- transplant nephrectomy
+2877118,-- ICD10 0TY0
+2833286,-- ICD10 0TY1
+4082531,--US scan of transpl
+4180454,--Examination of live donor after kidney transplant
+42690461,-- Fluoroscopy guided removal of nephrostomy tube from transplanted kidney
+------ conditions ----
+42539502,-- transplanted kidney present
+4324887--Disorder related to renal transplantation
+)
+AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
 
 INSERT INTO ckd_codes_anna
@@ -152,15 +151,15 @@ INSERT INTO ckd_codes_anna
   vocabulary_id,
   domain_id
 )
-SELECT 'Dialysis' AS category,
+SELECT 'dialysis' AS category,
        c.concept_id,
        c.concept_name,
        c.concept_code,
        c.vocabulary_id,
        c.domain_id
-FROM devv5.concept_ancestor
-  LEFT JOIN devv5.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-  JOIN devv5.concept c
+FROM @vocabulary_database_schema.concept_ancestor
+  JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN @vocabulary_database_schema.concept c
     ON concept_id_1 = c.concept_id
    AND cr.invalid_reason IS NULL
    AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to') 
@@ -192,9 +191,9 @@ SELECT
   c.concept_code,
   c.vocabulary_id,
   c.domain_id
-FROM concept_ancestor
-  LEFT JOIN concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-  JOIN concept c
+FROM @vocabulary_database_schema.concept_ancestor
+  JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN @vocabulary_database_schema.concept c
     ON concept_id_1 = c.concept_id
        AND cr.invalid_reason IS NULL
        AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to')
@@ -233,9 +232,9 @@ INSERT INTO ckd_codes
     c.concept_code,
     c.vocabulary_id,
     c.domain_id
-  FROM concept_ancestor
-    LEFT JOIN concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-    JOIN concept c
+  FROM @vocabulary_database_schema.concept_ancestor
+    JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+    JOIN @vocabulary_database_schema.concept c
       ON concept_id_1 = c.concept_id
          AND cr.invalid_reason IS NULL
          AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to')
@@ -258,15 +257,15 @@ INSERT INTO ckd_codes
   domain_id
 )
   SELECT
-    'Other_Acute' AS category,
+    'other_acute' AS category,
     c.concept_id,
     c.concept_name,
     c.concept_code,
     c.vocabulary_id,
     c.domain_id
-  FROM concept_ancestor
-    LEFT JOIN concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-    JOIN concept c
+  FROM @vocabulary_database_schema.concept_ancestor
+    JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+    JOIN @vocabulary_database_schema.concept c
       ON concept_id_1 = c.concept_id
          AND cr.invalid_reason IS NULL
          AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to')
@@ -295,9 +294,9 @@ INSERT INTO ckd_codes
     c.concept_code,
     c.vocabulary_id,
     c.domain_id
-  FROM concept_ancestor
-    LEFT JOIN concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-    JOIN concept c
+  FROM @vocabulary_database_schema.concept_ancestor
+    JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+    JOIN @vocabulary_database_schema.concept c
       ON concept_id_1 = c.concept_id
          AND cr.invalid_reason IS NULL
          AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to')
@@ -320,15 +319,15 @@ INSERT INTO ckd_codes
   domain_id
 )
   SELECT
-    'Other_KD' AS category,
+    'other_KD' AS category,
     c.concept_id,
     c.concept_name,
     c.concept_code,
     c.vocabulary_id,
     c.domain_id
-  FROM concept_ancestor
-    LEFT JOIN concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-    JOIN concept c
+  FROM @vocabulary_database_schema.concept_ancestor
+    JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+    JOIN @vocabulary_database_schema.concept c
       ON concept_id_1 = c.concept_id
          AND cr.invalid_reason IS NULL
          AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to')

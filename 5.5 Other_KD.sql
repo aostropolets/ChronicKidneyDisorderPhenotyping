@@ -1,4 +1,5 @@
-
+CREATE TEMP TABLE qualified_events
+AS
 with primary_events (event_id, person_id, start_date, end_date, op_start_date, op_end_date, visit_occurrence_id) as
 (
 -- Begin Primary Events
@@ -18,16 +19,16 @@ FROM
          co.visit_occurrence_id
       FROM @target_database_schema.CKD_codes ckd
          JOIN @cdm_database_schema.CONDITION_OCCURRENCE co
-          on (co.condition_concept_id = ckd.concept_id and ckd.category = 'Other_KD')
+          on (co.condition_concept_id = ckd.concept_id and ckd.category = 'other_KD')
       ) E
 -- End CDM tables Criteria
 	JOIN @cdm_database_schema.observation_period OP on E.person_id = OP.person_id and E.start_date >=  OP.observation_period_start_date and E.start_date <= op.observation_period_end_date
-  WHERE DATEADD(day,0,OP.OBSERVATION_PERIOD_START_DATE) <= E.START_DATE AND DATEADD(day,0,E.START_DATE) <= OP.OBSERVATION_PERIOD_END_DATE
+  HERE (OP.OBSERVATION_PERIOD_START_DATE + 0*INTERVAL'1 day') <= E.START_DATE AND (E.START_DATE + 0*INTERVAL'1 day') <= OP.OBSERVATION_PERIOD_END_DATE
 ) P
 -- End Primary Events
 )
 SELECT event_id, person_id, start_date, end_date, op_start_date, op_end_date, visit_occurrence_id
-INTO #qualified_events
+
 FROM
 (
   select pe.event_id, pe.person_id, pe.start_date, pe.end_date, pe.op_start_date, pe.op_end_date,
@@ -35,39 +36,83 @@ FROM
   FROM primary_events pe
 ) QE
 ;
+
+ANALYZE qualified_events
+;
+
+--- Inclusion Rule Inserts
+
+CREATE TEMP TABLE inclusion_events  (inclusion_rule_id bigint,
+	person_id bigint,
+	event_id bigint
+);
+
+CREATE TEMP TABLE included_events
+
+AS
+WITH cteIncludedEvents(event_id, person_id, start_date, end_date, op_start_date, op_end_date, ordinal)  AS (
+  SELECT event_id, person_id, start_date, end_date, op_start_date, op_end_date, row_number() over (partition by person_id order by start_date ASC) as ordinal
+  from
+  (
+    select Q.event_id, Q.person_id, Q.start_date, Q.end_date, Q.op_start_date, Q.op_end_date, SUM(coalesce(POWER(cast(2 as bigint), I.inclusion_rule_id), 0)) as inclusion_rule_mask
+    from qualified_events Q
+    LEFT JOIN inclusion_events I on I.person_id = Q.person_id and I.event_id = Q.event_id
+    GROUP BY Q.event_id, Q.person_id, Q.start_date, Q.end_date, Q.op_start_date, Q.op_end_date
+  ) MG -- matching groups
+
+)
+ SELECT
+event_id, person_id, start_date, end_date, op_start_date, op_end_date
+
+FROM
+cteIncludedEvents Results
+
+;
+ANALYZE included_events
+;
+
+
 -- generate cohort periods into #final_cohort
-with cohort_ends (event_id, person_id, end_date) as
-(
+CREATE TEMP TABLE cohort_rows
+
+AS
+WITH cohort_ends (event_id, person_id, end_date)  AS (
 	-- cohort exit dates
   -- By default, cohort exit at the event's op end date
-select event_id, person_id, op_end_date as end_date from #included_events
+select event_id, person_id, op_end_date as end_date from included_events
 ),
 first_ends (person_id, start_date, end_date) as
 (
 	select F.person_id, F.start_date, F.end_date
 	FROM (
-	  select I.event_id, I.person_id, I.start_date, E.end_date, row_number() over (partition by I.person_id, I.event_id order by E.end_date) as ordinal
-	  from #included_events I
+	  select I.event_id, I.person_id, I.start_date, E.end_date, row_number() over (partition by I.person_id, I.event_id order by E.end_date) as ordinal 
+	  from included_events I
 	  join cohort_ends E on I.event_id = E.event_id and I.person_id = E.person_id and E.end_date >= I.start_date
 	) F
 	WHERE F.ordinal = 1
 )
-select person_id, start_date, end_date
-INTO #cohort_rows
-from first_ends;
+ SELECT
+person_id, start_date, end_date
 
-with cteEndDates (person_id, end_date) AS -- the magic
-(
+FROM
+first_ends;
+ANALYZE cohort_rows
+;
+
+CREATE TEMP TABLE final_cohort
+
+AS
+WITH cteEndDates (person_id, end_date)  AS (	
 	SELECT
 		person_id
-		, DATEADD(day,-1 * 0, event_date)  as end_date
+		, (event_date + -1 * 0*INTERVAL'1 day')  as end_date
 	FROM
 	(
 		SELECT
 			person_id
 			, event_date
 			, event_type
-			, MAX(start_ordinal) OVER (PARTITION BY person_id ORDER BY event_date, event_type ROWS UNBOUNDED PRECEDING) AS start_ordinal
+			, MAX(start_ordinal) OVER (PARTITION BY person_id ORDER BY event_date, event_type ROWS UNBOUNDED PRECEDING) AS start_ordinal 
 			, ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY event_date, event_type) AS overall_ord
 		FROM
 		(
@@ -76,16 +121,17 @@ with cteEndDates (person_id, end_date) AS -- the magic
 				, start_date AS event_date
 				, -1 AS event_type
 				, ROW_NUMBER() OVER (PARTITION BY person_id ORDER BY start_date) AS start_ordinal
-			FROM #cohort_rows
-
+			FROM cohort_rows
+		
 			UNION ALL
+		
 
 			SELECT
 				person_id
-				, DATEADD(day,0,end_date) as end_date
+				, (end_date + 0*INTERVAL'1 day') as end_date
 				, 1 AS event_type
 				, NULL
-			FROM #cohort_rows
+			FROM cohort_rows
 		) RAWDATA
 	) e
 	WHERE (2 * e.start_ordinal) - e.overall_ord = 0
@@ -96,33 +142,41 @@ cteEnds (person_id, start_date, end_date) AS
 		 c.person_id
 		, c.start_date
 		, MIN(e.end_date) AS era_end_date
-	FROM #cohort_rows c
+	FROM cohort_rows c
 	JOIN cteEndDates e ON c.person_id = e.person_id AND e.end_date >= c.start_date
 	GROUP BY c.person_id, c.start_date
 )
-select person_id, min(start_date) as start_date, end_date
-into #final_cohort
-from cteEnds
+ SELECT
+person_id, min(start_date) as start_date, end_date
+
+FROM
+cteEnds
 group by person_id, end_date
+;
+ANALYZE final_cohort
 ;
 
 DELETE FROM @target_database_schema.@target_cohort_table where cohort_definition_id = 1005;
 INSERT INTO @target_database_schema.@target_cohort_table (cohort_definition_id, subject_id, cohort_start_date, cohort_end_date)
-select 1005 as cohort_definition_id, person_id, start_date, end_date
-FROM #final_cohort CO
+select 1005 as cohort_definition_id, person_id, start_date, end_date 
+FROM final_cohort CO
 ;
 
-TRUNCATE TABLE #cohort_rows;
-DROP TABLE #cohort_rows;
 
-TRUNCATE TABLE #final_cohort;
-DROP TABLE #final_cohort;
+TRUNCATE TABLE cohort_rows;
+DROP TABLE cohort_rows;
 
-TRUNCATE TABLE #inclusion_events;
-DROP TABLE #inclusion_events;
+TRUNCATE TABLE final_cohort;
+DROP TABLE final_cohort;
 
-TRUNCATE TABLE #qualified_events;
-DROP TABLE #qualified_events;
+TRUNCATE TABLE inclusion_events;
+DROP TABLE inclusion_events;
 
-TRUNCATE TABLE #included_events;
-DROP TABLE #included_events;
+TRUNCATE TABLE qualified_events;
+DROP TABLE qualified_events;
+
+TRUNCATE TABLE included_events;
+DROP TABLE included_events;
+
+TRUNCATE TABLE Codesets;
+DROP TABLE Codesets;
