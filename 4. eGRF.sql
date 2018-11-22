@@ -1,4 +1,4 @@
-CREATE TABLE EGFR
+CREATE TABLE #EGFR
   AS
     SELECT
       egfr.*,
@@ -35,6 +35,6 @@ CREATE TABLE EGFR
                     WHERE h.person_id = cr.person_id)
                  / value_as_number
              ELSE NULL END AS eGFR
-           FROM creatinine cr
+           FROM @target_database_schema.creatinine cr
          ) egfr
     WHERE eGFR is not NULL;

@@ -1,4 +1,4 @@
-CREATE TABLE height
+CREATE TABLE #height
   as
     SELECT DISTINCT
       person_id,
@@ -12,8 +12,8 @@ CREATE TABLE height
         then m.value_as_number --cm
       else null end AS value_as_number,
       m.value_as_concept_id
-    FROM MEASUREMENT m
-      JOIN creatinine c using (person_id)
+    FROM @cdm_database_schema.MEASUREMENT m
+      JOIN @target_database_schema.creatinine c using (person_id)
     WHERE m.measurement_concept_id IN (select concept_id
                                      from ckd_codes
                                      where category = 'height')

@@ -17,8 +17,20 @@ Venous catheterization for renal dialysis
 bypasses
 ********/
 
-create temp table @target_database_schema.ckd_codes
-as
+IF OBJECT_ID('#ckd_codes') IS NOT NULL
+	DROP TABLE #ckd_codes;
+create table #ckd_codes
+(category nvarchar(400),
+concept_id int,
+concept_name nvarchar(400),
+concept_code nvarchar(400),
+vocabulary_id nvarchar(400),
+domain_id nvarchar(400),
+
+);
+
+
+insert into #ckd_codes (category,concept_id,concept_name,concept_code,vocabulary_id,domain_id )
 select c.category,
       c.concept_id,
       c.concept_name,
@@ -30,18 +42,13 @@ select c.category,
           select
             'height' as category,
             c.*
-          from @vocabulary_database_schema.concept c
+          from ohdsi_cumc_deid_pending.dbo.concept c
           where concept_id in (4030731, 3014149, 3008989, 3015514, 3019171, 3013842, 3023357, 3023540, 3035463, 3036277)
           union all
           select
-          /*
-          select * from @vocabulary_database_schema.concept where
-  vocabulary_id in ('LOINC','SNOMED') and standard_concept = 'S' and domain_id = 'Measurement' and lower(concept_name) like
-    'creatinine%' and concept_class_id not in ('Clinical Finding') and not concept_name ~* 'stool|vitreous|synovial|amniotic|cerebral|challenge|clearance';
-*/
             'creatinine',
             c.*
-          from concept c
+          from ohdsi_cumc_deid_pending.dbo.concept c
           where concept_id in (3045558,4150621,3042112,3050975,3026387,3026726,3004239,3024742,3013280,3053284,3014654,3040071,3022243,40760461,42868736,3040510,
                               21491015,21492443,3033837,40762044,3021126,4324383,3006701,3010663,3037459,3037441,40762091,3008392,3012506,3013296,3028031,3013539,
                               3026275,3032932,3043954,3004171,3016647,3011002,3016723,3051825,3025065,3003447,3022016,43055681,3012179,40762887,3045443,4276116,
@@ -54,33 +61,33 @@ select c.category,
           select
             'albumin',
             c.* --	mass/time
-          from @vocabulary_database_schema.concept c
+          from ohdsi_cumc_deid_pending.dbo.concept c
           where concept_id in
                 (46236963, 3033268, 3050449, 3018097, 3027035, 043771, 40766204, 3005577, 3040290, 3043179, 40759673, 3049506, 40761549)
           union all
           select
             'albumin',
             c.* --	mass/volume
-          from @vocabulary_database_schema.concept c
+          from ohdsi_cumc_deid_pending.dbo.concept c
           where concept_id in
                 (3008512, 3012516, 46236875, 3039775, 3018104, 3030511, 3008960, 37393656, 4193719, 40760483, 3005031, 3039436, 3046828, 3000034)
           union all
           select
             'albumin',
             c.* -- albumin general codes
-          from @vocabulary_database_schema.concept c
+          from ohdsi_cumc_deid_pending.dbo.concept c
           where concept_id in (4017498, 2212188, 2212189, 4152996)
           union all
           select
             'protein',
             c.* -- general
-          from @vocabulary_database_schema.concept c
+          from ohdsi_cumc_deid_pending.dbo.concept c
           where concept_id in (4152995, 4064934)
           union all
           select
             'alb/creat_ratio',
             c.*
-          from @vocabulary_database_schema.concept c
+          from ohdsi_cumc_deid_pending.dbo.concept c
           where
             concept_id in (3000819, 3034485, 3002812, 3000837, 46235897, 3020682, 3043209, 3002827, 3001802, 40762252,
                                     46235435, 3022826, 46235434, 3023556, 4154347)
@@ -88,7 +95,7 @@ select c.category,
           select
             'egfr',
             c.*
-          from @vocabulary_database_schema.concept c
+          from ohdsi_cumc_deid_pending.dbo.concept c
           where concept_id in
                 (3029829, 3029859, 3030104, 3045262, 36304157, 36306178, 40478895, 40478963, 40483219, 40485075,
                   40490315, 40764999, 40771922, 42869913, 4478827544790183, 44806420, 46236952, 46236975, 3049187,
@@ -97,13 +104,13 @@ select c.category,
           select
             'gravity',
             c.*
-          from @vocabulary_database_schema.concept c
+          from ohdsi_cumc_deid_pending.dbo.concept c
           where concept_id in
                 (2212165, 2212166, 2212577, 3000330, 3019150, 3029991, 3032448, 3033543, 3034076, 3039919, 3043812, 4147583)
         ) c
 ;
 
-INSERT INTO ckd_codes
+INSERT INTO #ckd_codes
 (
   category,
   concept_id,
@@ -118,9 +125,9 @@ SELECT 'transplant' AS category,
        c.concept_code,
        c.vocabulary_id,
        c.domain_id
-FROM @vocabulary_database_schema.concept_ancestor
-  JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-  JOIN @vocabulary_database_schema.concept c
+FROM ohdsi_cumc_deid_pending.dbo.concept_ancestor
+  JOIN ohdsi_cumc_deid_pending.dbo.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN ohdsi_cumc_deid_pending.dbo.concept c
     ON concept_id_1 = c.concept_id
    AND cr.invalid_reason IS NULL
    AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc') 
@@ -142,7 +149,7 @@ WHERE ancestor_concept_id IN (
 AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
 
-INSERT INTO ckd_codes_anna
+INSERT INTO #ckd_codes
 (
   category,
   concept_id,
@@ -157,9 +164,9 @@ SELECT 'dialysis' AS category,
        c.concept_code,
        c.vocabulary_id,
        c.domain_id
-FROM @vocabulary_database_schema.concept_ancestor
-  JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-  JOIN @vocabulary_database_schema.concept c
+FROM ohdsi_cumc_deid_pending.dbo.concept_ancestor
+  JOIN ohdsi_cumc_deid_pending.dbo.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN ohdsi_cumc_deid_pending.dbo.concept c
     ON concept_id_1 = c.concept_id
    AND cr.invalid_reason IS NULL
    AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to') 
@@ -180,10 +187,8 @@ WHERE ancestor_concept_id IN (
 AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
 
-INSERT INTO ckd_codes
-  (
-    (category, concept_id, concept_name, concept_code, vocabulary_id, domain_id)
-  )
+INSERT INTO #ckd_codes
+  (category, concept_id, concept_name, concept_code, vocabulary_id, domain_id)
 SELECT
   'AKD' AS category,
   c.concept_id,
@@ -191,9 +196,9 @@ SELECT
   c.concept_code,
   c.vocabulary_id,
   c.domain_id
-FROM @vocabulary_database_schema.concept_ancestor
-  JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-  JOIN @vocabulary_database_schema.concept c
+FROM ohdsi_cumc_deid_pending.dbo.concept_ancestor
+  JOIN ohdsi_cumc_deid_pending.dbo.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+  JOIN ohdsi_cumc_deid_pending.dbo.concept c
     ON concept_id_1 = c.concept_id
        AND cr.invalid_reason IS NULL
        AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to')
@@ -216,7 +221,10 @@ WHERE ancestor_concept_id IN (
   )
   AND c.vocabulary_id NOT IN ('MeSH', 'PPI', 'SUS')
 ;
-INSERT INTO ckd_codes
+
+
+
+INSERT INTO #ckd_codes
 (
   category,
   concept_id,
@@ -232,9 +240,9 @@ INSERT INTO ckd_codes
     c.concept_code,
     c.vocabulary_id,
     c.domain_id
-  FROM @vocabulary_database_schema.concept_ancestor
-    JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-    JOIN @vocabulary_database_schema.concept c
+  FROM ohdsi_cumc_deid_pending.dbo.concept_ancestor
+    JOIN ohdsi_cumc_deid_pending.dbo.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+    JOIN ohdsi_cumc_deid_pending.dbo.concept c
       ON concept_id_1 = c.concept_id
          AND cr.invalid_reason IS NULL
          AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to')
@@ -247,7 +255,7 @@ INSERT INTO ckd_codes
   )
         AND c.vocabulary_id NOT IN ('MeSH', 'PPI', 'SUS');
 
-INSERT INTO ckd_codes
+INSERT INTO #ckd_codes
 (
   category,
   concept_id,
@@ -263,9 +271,9 @@ INSERT INTO ckd_codes
     c.concept_code,
     c.vocabulary_id,
     c.domain_id
-  FROM @vocabulary_database_schema.concept_ancestor
-    JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-    JOIN @vocabulary_database_schema.concept c
+  FROM ohdsi_cumc_deid_pending.dbo.concept_ancestor
+    JOIN ohdsi_cumc_deid_pending.dbo.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+    JOIN ohdsi_cumc_deid_pending.dbo.concept c
       ON concept_id_1 = c.concept_id
          AND cr.invalid_reason IS NULL
          AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to')
@@ -278,7 +286,7 @@ INSERT INTO ckd_codes
         AND c.vocabulary_id NOT IN ('MeSH', 'PPI', 'SUS');
 
 -- didn't get additional codes
-INSERT INTO ckd_codes
+INSERT INTO #ckd_codes
 (
   category,
   concept_id,
@@ -294,9 +302,9 @@ INSERT INTO ckd_codes
     c.concept_code,
     c.vocabulary_id,
     c.domain_id
-  FROM @vocabulary_database_schema.concept_ancestor
-    JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-    JOIN @vocabulary_database_schema.concept c
+  FROM ohdsi_cumc_deid_pending.dbo.concept_ancestor
+    JOIN ohdsi_cumc_deid_pending.dbo.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+    JOIN ohdsi_cumc_deid_pending.dbo.concept c
       ON concept_id_1 = c.concept_id
          AND cr.invalid_reason IS NULL
          AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to')
@@ -309,7 +317,7 @@ INSERT INTO ckd_codes
         AND c.vocabulary_id NOT IN ('MeSH', 'PPI', 'SUS')
 ;
 
-INSERT INTO ckd_codes
+INSERT INTO #ckd_codes
 (
   category,
   concept_id,
@@ -325,9 +333,9 @@ INSERT INTO ckd_codes
     c.concept_code,
     c.vocabulary_id,
     c.domain_id
-  FROM @vocabulary_database_schema.concept_ancestor
-    JOIN @vocabulary_database_schema.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
-    JOIN @vocabulary_database_schema.concept c
+  FROM ohdsi_cumc_deid_pending.dbo.concept_ancestor
+    JOIN ohdsi_cumc_deid_pending.dbo.concept_relationship cr ON cr.concept_id_2 = descendant_concept_id
+    JOIN ohdsi_cumc_deid_pending.dbo.concept c
       ON concept_id_1 = c.concept_id
          AND cr.invalid_reason IS NULL
          AND relationship_id IN ('Maps to', 'Maps to value', 'Has asso proc', 'Followed by', 'Has due to')
@@ -339,4 +347,3 @@ INSERT INTO ckd_codes
          201313--Hypertensive renal disease
         )
         AND c.vocabulary_id NOT IN ('MeSH', 'PPI', 'SUS');
-

@@ -1,9 +1,6 @@
-﻿
---????????????????  непонятно зачем
+﻿--????????????????  непонятно зачем
 /*** Block 5C: get most recent eGFR for patient who has eGFR ***/
-
-
-CREATE TEMP TABLE @target_database_schema.GFRrecent
+CREATE TABLE @target_database_schema.#GFRrecent
 AS
 SELECT person_id, eGFR AS eGFRrecentVal, measurement_date AS eGFRrecentDt
 FROM (
@@ -12,13 +9,11 @@ FROM eGFR
 ) G
 WHERE rn =1;
 
-
-
 /*** Block 5D: Check how many Cr cannot be converted to eGFR ***/
 /* Analyze how many Cr cannot be converted into eGFR because of missing height information */
-SELECT * FROM #tmpGFR WHERE eGFR IS NULL AND crVal >0;
+SELECT * FROM #EGFR WHERE eGFR IS NULL AND crVal >0;
 SELECT COUNT(DIstinct person_id) FROM #tmpGFR WHERE eGFR IS NULL AND crVal >0;
-SELECT * FROM #tmpGFR WHERE eGFR IS NULL AND crVal = 0; 
+SELECT * FROM #EGFR WHERE eGFR IS NULL AND crVal = 0; 
 
 
 --proteins
