@@ -1,7 +1,13 @@
 ﻿--????????????????  непонятно зачем
 /*** Block 5C: get most recent eGFR for patient who has eGFR ***/
-CREATE TABLE @target_database_schema.#GFRrecent
-AS
+IF OBJECT_ID('#GFRrecent') IS NOT NULL
+	DROP TABLE @target_database_schema.#GFRrecent;
+CREATE TABLE @target_database_schema.#GFRrecent (
+	person_id INT NOT NULL
+	,eGFRrecentVal FLOAT NOT NULL
+	,eGFRrecentDt DATETIME2(6) NOT NULL
+);
+INSERT INTO @target_database_schema.#GFRrecent
 SELECT person_id, eGFR AS eGFRrecentVal, measurement_date AS eGFRrecentDt
 FROM (
 	SELECT person_id, eGFR, measurement_date, ROW_NUMBER() OVER(PARTITION BY person_id ORDER by measurement_date DESC) AS rn
@@ -17,8 +23,15 @@ SELECT * FROM #EGFR WHERE eGFR IS NULL AND crVal = 0;
 
 
 --proteins
-CREATE TEMP TABLE @target_database_schema.albumin_stage
-  as
+IF OBJECT_ID('#albumin_stage') IS NOT NULL
+	DROP TABLE #albumin_stage;
+CREATE TABLE @target_database_schema.#albumin_stage (
+	person_id INT,
+	measurement_date DATETIME2(6),
+	AStage VARCHAR(100),
+	value_as_number FLOAT 
+);
+INSERT INTO  @target_database_schema.#albumin_stage
     SELECT
       person_id,
       measurement_date,
@@ -27,7 +40,8 @@ CREATE TEMP TABLE @target_database_schema.albumin_stage
       WHEN value_as_number >= 30 AND value_as_number <= 300
         THEN 'A2'
       WHEN value_as_number > 300
-        THEN 'A3' END AS P
+        THEN 'A3' END AS AStage,
+      value_as_number
     FROM
       (SELECT DISTINCT
          person_id,
@@ -49,18 +63,25 @@ CREATE TEMP TABLE @target_database_schema.albumin_stage
                                         where category = 'albumin')
       ) alb;
 
-CREATE TEMP TABLE @target_database_schema.protein_stage
-  as
+IF OBJECT_ID('#protein_stage') IS NOT NULL
+	DROP TABLE #protein_stage;
+CREATE TABLE @target_database_schema.#protein_stage (
+	person_id INT,
+	measurement_date DATETIME2(6),
+	PStage VARCHAR(100),
+	value_as_number FLOAT 
+);
+ INSERT INTO @target_database_schema.#protein_stage
     SELECT
       person_id,
       measurement_date,
-	  value_as_number,
       CASE WHEN PA1 >= PA2 AND PA1 >= PA3
         THEN 'A1'
       WHEN PA2 >= PA1 AND PA2 >= PA3
         THEN 'A2'
       WHEN PA3 >= PA1 AND PA3 >= PA2
-        THEN 'A3' END AS Pstage
+        THEN 'A3' END AS Pstage,
+      value_as_number
     FROM (
            SELECT
              *,
@@ -99,14 +120,19 @@ CREATE TEMP TABLE @target_database_schema.protein_stage
   ) pr3;
 -- value_as_string doesn't exist, check what there is instead
 
+/* *** BLOCK 6: Dialysis co-occurrent with AKI, defined as AKI happens before or after 1 month of dialysis, 1 month is defined as 31 days (DATEDIFF in month is 1 if the difference between two dates is 1.5 months) ****/
+IF OBJECT_ID('#DialysisCooccurrentWithAKI') IS NOT NULL
+	DROP TABLE #DialysisCooccurrentWithAKI;
+CREATE TABLE @target_database_schema.#DialysisCooccurrentWithAKI (
+	person_id INT,
+	dialysisDt DATETIME2(6),
+	akiDt DATETIME2(6),
+	dialysisAkiDiffDtAbs INT
+);
 
-/* *** BLOCK 6: Dialysis co-occurrent with AKI, defined as AKI happens before or after 1 month of dialysis, 1 month is defined as 31 days (DATEDIFF in month is 1 if the difference between two dates is 1.5 months) *** */
-
-CREATE TEMP TABLE @target_database_schema.DialysisCooccurrentWithAKI
-AS
+INSERT INTO @target_database_schema.#DialysisCooccurrentWithAKI;
 SELECT DISTINCT T.person_id, T.cohort_start_date AS dialysisDt, U.cohort_start_date AS akiDt
-	, (DATE_PART('day', T.cohort_start_date)-  DATE_PART('day',U.cohort_start_date)) AS dialysisAkiDiffDtAbs
-
+	, ABS(DATEDIFF(day, T.cohort_start_date, U.cohort_start_date)) AS dialysisAkiDiffDtAbs
 FROM @cdm_database_schema.cohort T
 LEFT JOIN
 	(SELECT DISTINCT * 
@@ -115,14 +141,22 @@ LEFT JOIN
 	) U
 ON T.subject_id=U.subject_id 
 WHERE T.cohort_definition_id = 1001 -- dialysis
-AND (DATE_PART('day', T.cohort_start_date)-  DATE_PART('day',U.cohort_start_date)) <= 31 --For acute calculating of 1 month by using 31 days. 
+AND AND ABS(DATEDiff(DAY, T.cohort_start_date, U.cohort_start_date)) <= 31 --For acute calculating of 1 month by using 31 days. 
  ;
  
 /* *** BLOCK 7: eGFR co-occurrent with acute conditions (AKI/prerenal kidney injury/sepsis/volume depletion/shock), defined as acute conditions happen before or after 1 month of eGFR *** */
-CREATE TEMP TABLE @target_database_schema.GfrCooccurrentWithAcuteCondition
-AS
+IF OBJECT_ID('#GfrCooccurrentWithAcuteCondition') IS NOT NULL
+	DROP TABLE  @target_database_schema.#GfrCooccurrentWithAcuteCondition;
+CREATE TABLE  @target_database_schema.#GfrCooccurrentWithAcuteCondition(
+	person_id INT
+	,eGfrDt DATETIME2(6)
+	,acuteConditionDt DATETIME2(6)
+	,eGfrAcuteConditionDiffDtAbs INT
+	);
+		
+INSERT INTO @target_database_schema.#GfrCooccurrentWithAcuteCondition
 SELECT DISTINCT T.person_id, T.measurement_date AS eGfrDt, U.cohort_start_date AS acuteConditionDt
-	, (DATE_PART('day', T.cohort_start_date)-  DATE_PART('day',U.cohort_start_date)) AS eGfrAcuteConditionDiffDtAbs
+	,  ABS(DATEDIFF(day, T.measurement_date, U.cohort_start_date)) AS eGfrAcuteConditionDiffDtAbs
 FROM eGFR T
 LEFT JOIN
 	(SELECT DISTINCT * 
@@ -130,23 +164,22 @@ LEFT JOIN
 	WHERE cohort_definition_id IN (1002,1003) -- AKD, Other acute conditions
 	) U
 ON T.person_id=U.subject_id 
-WHERE (DATE_PART('day', T.cohort_start_date)-  DATE_PART('day',U.cohort_start_date)) <= 31 --For acute calculating of 1 month by using 31 days.
+WHERE  ABS(DATEDIFF(day, T.measurement_date, U.cohort_start_date)) <= 31 --For acute calculating of 1 month by using 31 days.
  ;
-
 
 /*** Block 8D: A-staging for Dipstick Urine Analysis Protein. UA protein data range is Negative, Trace, 1+, 2+, 3+, 4+ ***/
 /** UA Protein with co-occurrent SG **/
-INSERT INTO protein_stage
+INSERT INTO #protein_stage
   SELECT DISTINCT
     person_id,
     measurement_date,
-    uaProteinNumValue,
     CASE WHEN PA1 >= PA2 AND PA1 >= PA3
       THEN 'A1'
     WHEN PA2 >= PA1 AND PA2 >= PA3
       THEN 'A2'
     WHEN PA3 >= PA1 AND PA3 >= PA2
-      THEN 'A3' END AS Pstage
+      THEN 'A3' END AS Pstage,
+     uaProteinNumValue 
   FROM (
          SELECT
            *,
@@ -200,16 +233,16 @@ INSERT INTO protein_stage
        ) pr2;
 
 /** UA Protein without SG **/
-INSERT INTO protein_stage
+INSERT INTO #protein_stage
 SELECT DISTINCT T1.person_id, T1.measurement_start_date
-, CASE WHEN T1.value_as_string = 'Negative' THEN 0
-	WHEN T1.value_as_string = 'Trace' THEN 1
-	WHEN T1.value_as_string = '1+' THEN 2
-	WHEN T1.value_as_string IN ('2+', '3+', '4+') THEN 3 END AS eventNumValue
 ,CASE WHEN T1.value_as_string = 'Negative' THEN 'A1'
 	WHEN T1.value_as_string = 'Trace' THEN 'A1'
 	WHEN T1.value_as_string = '1+' THEN 'A2'
 	WHEN T1.value_as_string IN ('2+', '3+', '4+') THEN 'A3' END AS Astage
+, CASE WHEN T1.value_as_string = 'Negative' THEN 0
+WHEN T1.value_as_string = 'Trace' THEN 1
+WHEN T1.value_as_string = '1+' THEN 2
+WHEN T1.value_as_string IN ('2+', '3+', '4+') THEN 3 END AS eventNumValue
 FROM ( select * FROM @cdm_database_schema.MEASUREMENT join @target_database_schema.ckd_codes on measurement_concept_id = concept_id 
 	and category ='protein') T1
 LEFT JOIN 
@@ -223,7 +256,6 @@ ON T1.person_id = T2.person_id
 WHERE T2.value_as_number is not null
 ;
 
-
 --просто посмотреть на результат
 /* Test #tmpUrineTest */
 SELECT * FROM (
@@ -235,9 +267,20 @@ SELECT *, ROW_NUMBER() OVER(PARTITION BY person_id, eventStartDate ORDER by Asta
 
 /* *** BLOCK 9: For deriving proteinuria status, retrieve most recent A staging and its prior Astaging *** */
 /*** Block 9A: get Urine Test that is close to the most recent eGFR. The urine test is no later than 24 month (730 days) before recent eGFR [-24m, now] */
-
-CREATE TEMP TABLE @target_database_schema.UrineTestCloseToRntGfr
-  AS
+IF OBJECT_ID('#UrineTestCloseToRntGfr') IS NOT NULL
+	DROP TABLE @target_database_schema.#UrineTestCloseToRntGfr;
+CREATE TABLE @target_database_schema.#UrineTestCloseToRntGfr (
+	person_id INT
+	,urineTestDt DATETIME2(6)
+	,urineTestType VARCHAR(100)
+	,urineTestNumVal FLOAT
+	,ruleAstage VARCHAR(80) NOT NULL
+	,rn INT NOT NULL
+	,eGFRrecentVal FLOAT
+	,eGFRrecentDt DATETIME2(6)
+	);
+	
+INSERT INTO @target_database_schema.#UrineTestCloseToRntGfr
     SELECT
       G.person_id,
       U.measurement_date,
@@ -248,17 +291,29 @@ CREATE TEMP TABLE @target_database_schema.UrineTestCloseToRntGfr
         PARTITION BY G.person_id
         ORDER by U.measurement_date DESC ) AS rn,
       G.value_as_number,
-      G.measurement_date as pdate
+      G.measurement_date
     FROM @target_database_schema.EGFR G
       JOIN @target_database_schema.protein_stage U
         ON G.person_id = U.person_id
-    WHERE (DATE_PART('day', U.measurement_date) -  DATE_PART('day',G.measurement_date) )<=730; --For acute calculating of 24 months by using 730 days.
-
+    WHERE DATEDIFF(DAY, U.measurement_date, G.measurement_date) <= 730; --For acute calculating of 24 months by using 730 days.
     
 /*** Block 9B: A-staging: get most recent urine test and the prior urine test.
  The prior urine test is measured at least 3 months prior to the latest urine test ***/
-CREATE TEMP TABLE @target_database_schema.UrineTestCloseToRntGfr2 
-AS
+ IF OBJECT_ID('#UrineTestCloseToRntGfr2') IS NOT NULL
+	DROP TABLE @target_database_schema.#UrineTestCloseToRntGfr2;
+CREATE TABLE @target_database_schema.#UrineTestCloseToRntGfr2 (
+	person_id INT
+	,urineTestDt DATETIME2(6)
+	,urineTestType VARCHAR(100)
+	,value_as_number FLOAT
+	,Astage VARCHAR(80) NOT NULL
+	,diffMonth INT NOT NULL
+	,rn INT NOT NULL
+	,eGFRrecentVal FLOAT
+	,eGFRrecentDt DATETIME2(6)
+	);
+ 
+INSERT INTO @target_database_schema.#UrineTestCloseToRntGfr2 
 SELECT UJ.person_id, UJ.measurement_start_date, UJ.value_as_number, UJ.Astage, UJ.diffMonth
 , ROW_NUMBER() OVER(PARTITION BY person_id ORDER by UJ.measurement_start_date DESC) AS rn
 ,UJ.eGFRrecentVal
