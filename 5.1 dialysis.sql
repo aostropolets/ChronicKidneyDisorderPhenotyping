@@ -28,22 +28,22 @@ FROM
         co.condition_end_date     as end_date,
         co.condition_concept_id                       as TARGET_CONCEPT_ID,
         co.visit_occurrence_id
-      FROM @target_database_schema.CKD_codes ckd
+      FROM @target_database_schema.#CKD_codes ckd
         JOIN @cdm_database_schema.CONDITION_OCCURRENCE co
           on (co.condition_concept_id = ckd.concept_id and ckd.category = 'dialysis')
 	
 	union all
 	
       select
-        co.person_id,
-        co.observation_id                 as event_id,
-        co.observation_date as start_date,
-        co.observation_date     as end_date,
-        co.observation_concept_id                       as TARGET_CONCEPT_ID,
-        co.visit_occurrence_id
-      FROM @target_database_schema.CKD_codes ckd
+        o.person_id,
+        o.observation_id                 as event_id,
+        o.observation_date as start_date,
+        o.observation_date     as end_date,
+        o.observation_concept_id                       as TARGET_CONCEPT_ID,
+        o.visit_occurrence_id
+      FROM @target_database_schema.#CKD_codes ckd
         JOIN @cdm_database_schema.OBSERVATION o
-          on (o._concept_id = ckd.concept_id and ckd.category = 'dialysis')
+          on (o.observation_concept_id = ckd.concept_id and ckd.category = 'dialysis')
 
   ) E
 	JOIN @cdm_database_schema.observation_period OP on E.person_id = OP.person_id and E.start_date >=  OP.observation_period_start_date and E.start_date <= op.observation_period_end_date

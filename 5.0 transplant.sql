@@ -16,7 +16,7 @@ FROM
         pe.procedure_date     as end_date,
         pe.procedure_concept_id                       as TARGET_CONCEPT_ID,
         pe.visit_occurrence_id                         as visit_occurrence_id
-      FROM @target_database_schema.CKD_codes ckd
+      FROM @target_database_schema.#CKD_codes ckd
         JOIN @cdm_database_schema.PROCEDURE_OCCURRENCE pe
           on (pe.procedure_concept_id = ckd.concept_id and ckd.category = 'transplant')
 
@@ -30,7 +30,7 @@ FROM
         co.condition_end_date     as end_date,
         co.condition_concept_id                       as TARGET_CONCEPT_ID,
         co.visit_occurrence_id
-      FROM @target_database_schema.CKD_codes ckd
+      FROM @target_database_schema.#CKD_codes ckd
         JOIN @cdm_database_schema.CONDITION_OCCURRENCE co
           on (co.condition_concept_id = ckd.concept_id and ckd.category = 'transplant')
 

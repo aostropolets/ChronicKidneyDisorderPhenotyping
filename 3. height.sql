@@ -1,5 +1,15 @@
-CREATE TABLE #height
-  as
+IF OBJECT_ID('#height') IS NOT NULL
+	DROP TABLE @target_database_schema.#height;
+CREATE TABLE @target_database_schema.#height (
+	person_id INT,
+	measurement_date DATETIME2(6),
+	measurement_concept_id INT,
+	ht VARCHAR(100),
+	value_as_concept_id INT
+	);
+	
+
+INSERT INTO @target_database_schema.#height
     SELECT DISTINCT
       person_id,
       m.measurement_date,
@@ -10,12 +20,13 @@ CREATE TABLE #height
         then m.value_as_number * 100 -- m
       when m.unit_concept_id = 8582
         then m.value_as_number --cm
-      else null end AS value_as_number,
+      else null end AS ht,
       m.value_as_concept_id
     FROM @cdm_database_schema.MEASUREMENT m
-      JOIN @target_database_schema.creatinine c using (person_id)
+      JOIN @target_database_schema.#creatinine c using (person_id)
     WHERE m.measurement_concept_id IN (select concept_id
-                                     from ckd_codes
+                                     from @target_database_schema.#ckd_codes
                                      where category = 'height')
-          AND (c.measurement_date + INTERVAL '12 month') >= m.measurement_date
-          AND (c.measurement_date - INTERVAL '12 month') <= m.measurement_date;
+          AND DATEADD(year, 1, c.measurement_date) >= m.measurement_date
+          AND DATEADD(year, -1, c.measurement_date) <= m.measurement_date
+	  AND m.value_as_number IS NOT NULL;

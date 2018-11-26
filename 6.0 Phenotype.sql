@@ -1,5 +1,4 @@
-﻿--????????????????  непонятно зачем
-/*** Block 5C: get most recent eGFR for patient who has eGFR ***/
+﻿/*** Block 5C: get most recent eGFR for patient who has eGFR ***/
 IF OBJECT_ID('#GFRrecent') IS NOT NULL
 	DROP TABLE @target_database_schema.#GFRrecent;
 CREATE TABLE @target_database_schema.#GFRrecent (
@@ -7,20 +6,14 @@ CREATE TABLE @target_database_schema.#GFRrecent (
 	,eGFRrecentVal FLOAT NOT NULL
 	,eGFRrecentDt DATETIME2(6) NOT NULL
 );
+
 INSERT INTO @target_database_schema.#GFRrecent
 SELECT person_id, eGFR AS eGFRrecentVal, measurement_date AS eGFRrecentDt
 FROM (
 	SELECT person_id, eGFR, measurement_date, ROW_NUMBER() OVER(PARTITION BY person_id ORDER by measurement_date DESC) AS rn
-FROM eGFR
+FROM @target_database_schema.#eGFR
 ) G
 WHERE rn =1;
-
-/*** Block 5D: Check how many Cr cannot be converted to eGFR ***/
-/* Analyze how many Cr cannot be converted into eGFR because of missing height information */
-SELECT * FROM #EGFR WHERE eGFR IS NULL AND crVal >0;
-SELECT COUNT(DIstinct person_id) FROM #tmpGFR WHERE eGFR IS NULL AND crVal >0;
-SELECT * FROM #EGFR WHERE eGFR IS NULL AND crVal = 0; 
-
 
 --proteins
 IF OBJECT_ID('#albumin_stage') IS NOT NULL
@@ -57,11 +50,11 @@ INSERT INTO  @target_database_schema.#albumin_stage
            then value_as_number/1500 --mmol/l
          else null end AS value_as_number,
          value_as_concept_id
-       FROM @cdm_database_schema.MEASUREMENT ms
-       WHERE measurement_concept_id IN (select concept_id
-                                        FROM @target_database_schema.ckd_codes
-                                        where category = 'albumin')
+       FROM @cdm_database_schema.MEASUREMENT m
+       JOIN @target_database_schema.#ckd_codes ON concept_id = measurement_concept_id where category = 'albumin'
+	   WHERE value_as_number IS NOT NULL
       ) alb;
+
 
 IF OBJECT_ID('#protein_stage') IS NOT NULL
 	DROP TABLE #protein_stage;
@@ -114,10 +107,15 @@ CREATE TABLE @target_database_schema.#protein_stage (
                        else null end AS value_as_number,
                        value_as_concept_id
                      FROM @cdm_database_schema.MEASUREMENT m
-                       join @target_database_schema.ckd_codes on measurement_concept_id = concept_id
-                     where category = 'protein') pr1
-         ) pr2
-  ) pr3;
+                       join @target_database_schema.#ckd_codes on measurement_concept_id = concept_id
+                     where category = 'protein'
+                     
+			) pr1
+                  where pr1.value_as_number is not null
+        	 ) pr2
+ 	 ) pr3;
+
+
 -- value_as_string doesn't exist, check what there is instead
 
 /* *** BLOCK 6: Dialysis co-occurrent with AKI, defined as AKI happens before or after 1 month of dialysis, 1 month is defined as 31 days (DATEDIFF in month is 1 if the difference between two dates is 1.5 months) ****/
@@ -131,40 +129,34 @@ CREATE TABLE @target_database_schema.#DialysisCooccurrentWithAKI (
 );
 
 INSERT INTO @target_database_schema.#DialysisCooccurrentWithAKI;
-SELECT DISTINCT T.person_id, T.cohort_start_date AS dialysisDt, U.cohort_start_date AS akiDt
-	, ABS(DATEDIFF(day, T.cohort_start_date, U.cohort_start_date)) AS dialysisAkiDiffDtAbs
-FROM @cdm_database_schema.cohort T
-LEFT JOIN
-	(SELECT DISTINCT * 
-	FROM @target_database_schema.cohort T
-	WHERE cohort_definition_id = 1003 -- acute CK
-	) U
+SELECT DISTINCT T.person_id, T.cohort_start_date AS dialysisDt, U.cohort_start_date AS akiDt,,
+	ABS(DATEDIFF(day, T.cohort_start_date, U.cohort_start_date)) AS dialysisAkiDiffDtAbs
+FROM ohdsi_cumc_deid_pending.results.cohort T
+LEFT JOIN @target_database_schema.cohort U
 ON T.subject_id=U.subject_id 
 WHERE T.cohort_definition_id = 1001 -- dialysis
-AND AND ABS(DATEDiff(DAY, T.cohort_start_date, U.cohort_start_date)) <= 31 --For acute calculating of 1 month by using 31 days. 
- ;
+AND U.cohort_definition_id = 1003 -- acute CK
+AND ABS(DATEDiff(DAY, T.cohort_start_date, U.cohort_start_date)) <= 31 --For acute calculating of 1 month by using 31 days. 
+;
  
 /* *** BLOCK 7: eGFR co-occurrent with acute conditions (AKI/prerenal kidney injury/sepsis/volume depletion/shock), defined as acute conditions happen before or after 1 month of eGFR *** */
 IF OBJECT_ID('#GfrCooccurrentWithAcuteCondition') IS NOT NULL
 	DROP TABLE  @target_database_schema.#GfrCooccurrentWithAcuteCondition;
 CREATE TABLE  @target_database_schema.#GfrCooccurrentWithAcuteCondition(
-	person_id INT
-	,eGfrDt DATETIME2(6)
-	,acuteConditionDt DATETIME2(6)
-	,eGfrAcuteConditionDiffDtAbs INT
+	person_id INT,
+	eGfrDt DATETIME2(6),
+	acuteConditionDt DATETIME2(6),
+	eGfrAcuteConditionDiffDtAbs INT
 	);
 		
 INSERT INTO @target_database_schema.#GfrCooccurrentWithAcuteCondition
 SELECT DISTINCT T.person_id, T.measurement_date AS eGfrDt, U.cohort_start_date AS acuteConditionDt
 	,  ABS(DATEDIFF(day, T.measurement_date, U.cohort_start_date)) AS eGfrAcuteConditionDiffDtAbs
-FROM eGFR T
-LEFT JOIN
-	(SELECT DISTINCT * 
-	FROM @target_database_schema.cohort T
-	WHERE cohort_definition_id IN (1002,1003) -- AKD, Other acute conditions
-	) U
+FROM #eGFR T
+LEFT JOIN @target_database_schema.cohort U
 ON T.person_id=U.subject_id 
-WHERE  ABS(DATEDIFF(day, T.measurement_date, U.cohort_start_date)) <= 31 --For acute calculating of 1 month by using 31 days.
+WHERE cohort_definition_id IN (1002,1003) -- AKD, Other acute conditions
+AND ABS(DATEDIFF(day, T.measurement_date, U.cohort_start_date)) <= 31 --For acute calculating of 1 month by using 31 days.
  ;
 
 /*** Block 8D: A-staging for Dipstick Urine Analysis Protein. UA protein data range is Negative, Trace, 1+, 2+, 3+, 4+ ***/
@@ -179,7 +171,7 @@ INSERT INTO #protein_stage
       THEN 'A2'
     WHEN PA3 >= PA1 AND PA3 >= PA2
       THEN 'A3' END AS Pstage,
-     uaProteinNumValue 
+     uaProteinNumValue as value_as_number 
   FROM (
          SELECT
            *,
@@ -189,41 +181,41 @@ INSERT INTO #protein_stage
                 SELECT DISTINCT
                   T1.person_id,
                   T1.measurement_date  AS uaProteinDate,
-                  CASE WHEN T1.value_as_string = 'Negative'
+                  CASE WHEN T1.value_as_concept_id in (45878583,9189) -- 'Negative'
                     THEN 0
-                  WHEN T1.value_as_string = 'Trace'
+                  WHEN T1.value_as_concept_id in (45881796,9192,45878303) -- 'Trace' 
                     THEN 1
-                  WHEN T1.value_as_string = '1+'
+                  WHEN T1.value_as_concept_id = 45878548 -- '1+'
                     THEN 2
-                  WHEN T1.value_as_string IN ('2+', '3+', '4+')
+                  WHEN T1.value_as_concept_id IN (45878148,45881916,45878148,45878305,45876467,45881623) --('2+', '3+', '4+')
                     THEN 3 END       AS uaProteinNumValue,
-                  CASE WHEN T1.value_as_string = 'Negative'
-                    THEN exp(-141.736 + 140.813 * T2.eventNumValue) / (1 + exp(-141.736 + 140.813 * T2.eventNumValue))
-                  WHEN T1.value_as_string = 'Trace'
-                    THEN exp(-143.142 + 140.813 * T2.eventNumValue) / (1 + exp(-143.142 + 140.813 * T2.eventNumValue))
-                  WHEN T1.value_as_string = '1+'
-                    THEN exp(-145.145 + 140.813 * T2.eventNumValue) / (1 + exp(-145.145 + 140.813 * T2.eventNumValue))
-                  WHEN T1.value_as_string IN ('2+', '3+', '4+')
-                    THEN exp(-148.117 + 140.813 * T2.eventNumValue) / (1 + exp(-148.117 + 140.813 * T2.eventNumValue))
+                  CASE WHEN T1.value_as_concept_id in (45878583,9189)
+                    THEN exp(-141.736 + 140.813 * T2.value_as_number) / (1 + exp(-141.736 + 140.813 * T2.value_as_number))
+                  WHEN T1.value_as_concept_id in (45881796,9192,45878303) -- 'Trace' 
+                    THEN exp(-143.142 + 140.813 * T2.value_as_number) / (1 + exp(-143.142 + 140.813 * T2.value_as_number))
+                  WHEN T1.value_as_concept_id = 45878548 -- '1+'
+                    THEN exp(-145.145 + 140.813 * T2.value_as_number) / (1 + exp(-145.145 + 140.813 * T2.value_as_number))
+                  WHEN T1.value_as_concept_id IN (45878148,45881916,45878148,45878305,45876467,45881623)--('2+', '3+', '4+')
+                    THEN exp(-148.117 + 140.813 * T2.value_as_number) / (1 + exp(-148.117 + 140.813 * T2.value_as_number))
                   END                AS PA1,
-                  CASE WHEN T1.value_as_string = 'Negative'
-                    THEN exp(-200.777 + 203.011 * T2.eventNumValue) / (1 + exp(-200.777 + 203.011 * T2.eventNumValue))
-                  WHEN T1.value_as_string = 'Trace'
-                    THEN exp(-202.959 + 203.011 * T2.eventNumValue) / (1 + exp(-202.959 + 203.011 * T2.eventNumValue))
-                  WHEN T1.value_as_string = '1+'
-                    THEN exp(-204.642 + 203.011 * T2.eventNumValue) / (1 + exp(-204.642 + 203.011 * T2.eventNumValue))
-                  WHEN T1.value_as_string IN ('2+', '3+', '4+')
-                    THEN exp(-208.287 + 203.011 * T2.eventNumValue) / (1 + exp(-208.287 + 203.011 * T2.eventNumValue))
+                  CASE WHEN T1.value_as_concept_id in (45878583,9189)
+                    THEN exp(-200.777 + 203.011 * T2.value_as_number) / (1 + exp(-200.777 + 203.011 * T2.value_as_number))
+                  WHEN T1.value_as_concept_id  in (45881796,9192,45878303) -- 'Trace' 
+                    THEN exp(-202.959 + 203.011 * T2.value_as_number) / (1 + exp(-202.959 + 203.011 * T2.value_as_number))
+                  WHEN T1.value_as_concept_id = 45878548 -- '1+'
+                    THEN exp(-204.642 + 203.011 * T2.value_as_number) / (1 + exp(-204.642 + 203.011 * T2.value_as_number))
+                  WHEN T1.value_as_concept_id IN (45878148,45881916,45878148,45878305,45876467,45881623)--('2+', '3+', '4+')
+                    THEN exp(-208.287 + 203.011 * T2.value_as_number) / (1 + exp(-208.287 + 203.011 * T2.value_as_number))
                   END                AS PA1A2,
                   T2.value_as_number AS SgValue
                 FROM (select *
                       FROM @cdm_database_schema.MEASUREMENT
-                        join @target_database_schema.ckd_codes on measurement_concept_id = concept_id
+                        join @target_database_schema.#ckd_codes on measurement_concept_id = concept_id
                                           and category = 'protein') T1
                   LEFT JOIN
                   (SELECT *
                    FROM @cdm_database_schema.MEASUREMENT
-                     join @target_database_schema.ckd_codes on measurement_concept_id = concept_id
+                     join @target_database_schema.#ckd_codes on measurement_concept_id = concept_id
                                        and category = 'gravity') T2
                     ON T1.person_id = T2.person_id
                        AND T1.measurement_date = T2.measurement_date
@@ -234,29 +226,37 @@ INSERT INTO #protein_stage
 
 /** UA Protein without SG **/
 INSERT INTO #protein_stage
-SELECT DISTINCT T1.person_id, T1.measurement_start_date
-,CASE WHEN T1.value_as_string = 'Negative' THEN 'A1'
-	WHEN T1.value_as_string = 'Trace' THEN 'A1'
-	WHEN T1.value_as_string = '1+' THEN 'A2'
-	WHEN T1.value_as_string IN ('2+', '3+', '4+') THEN 'A3' END AS Astage
-, CASE WHEN T1.value_as_string = 'Negative' THEN 0
-WHEN T1.value_as_string = 'Trace' THEN 1
-WHEN T1.value_as_string = '1+' THEN 2
-WHEN T1.value_as_string IN ('2+', '3+', '4+') THEN 3 END AS eventNumValue
+SELECT DISTINCT T1.person_id, T1.measurement_date,
+CASE WHEN T1.value_as_concept_id  in (45878583,9189) -- 'Negative'
+	THEN 'A1'
+	WHEN T1.value_as_concept_id  in (45881796,9192,45878303) -- 'Trace' 
+	THEN 'A1'
+	WHEN T1.value_as_concept_id  = 45878548 -- '1+'
+	THEN 'A2'
+	WHEN T1.value_as_concept_id  IN (45878148,45881916,45878148,45878305,45876467,45881623)--('2+', '3+', '4+') 
+	THEN 'A3' END AS Astage,
+CASE WHEN T1.value_as_concept_id  in (45878583,9189) -- 'Negative'
+	THEN 0
+	WHEN T1.value_as_concept_id  in (45881796,9192,45878303) -- 'Trace' 
+	THEN 1
+	WHEN T1.value_as_concept_id  = 45878548 -- '1+'
+	THEN 2
+	WHEN T1.value_as_concept_id  IN (45878148,45881916,45878148,45878305,45876467,45881623)--('2+', '3+', '4+') 
+	THEN 3 END AS eventNumValue
 FROM ( select * FROM @cdm_database_schema.MEASUREMENT join @target_database_schema.ckd_codes on measurement_concept_id = concept_id 
 	and category ='protein') T1
 LEFT JOIN 
 	(SELECT *
 	FROM @cdm_database_schema.MEASUREMENT 
-	join @target_database_schema.ckd_codes on measurement_concept_id = concept_id 
+	join @target_database_schema.#ckd_codes on measurement_concept_id = concept_id 
 	and category ='gravity') T2
 ON T1.person_id = T2.person_id 
- AND T1.measurement_start_date = T2.measurement_start_date
+ AND T1.measurement_date = T2.measurement_date
  --AND CAST(T1.eventStartDate AS DATE)= CAST(T2.eventStartDate AS DATE) /* UA protein and SG are measured at the same datetime--depends on each instition's lab order habit*/
 WHERE T2.value_as_number is not null
 ;
 
---просто посмотреть на результат
+
 /* Test #tmpUrineTest */
 SELECT * FROM (
 SELECT *, ROW_NUMBER() OVER(PARTITION BY person_id, eventStartDate ORDER by Astage DESC) AS rn

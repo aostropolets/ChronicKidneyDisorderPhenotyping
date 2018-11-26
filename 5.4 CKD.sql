@@ -15,7 +15,7 @@ FROM
         co.condition_end_date   as end_date,
         co.condition_concept_id     as TARGET_CONCEPT_ID,
          co.visit_occurrence_id
-      FROM @target_database_schema.CKD_codes ckd
+      FROM @target_database_schema.#CKD_codes ckd
          JOIN @cdm_database_schema.CONDITION_OCCURRENCE co
           on (co.condition_concept_id = ckd.concept_id and ckd.category = 'CKD')
 	
@@ -28,7 +28,7 @@ FROM
         m.measurement_date     as end_date,
         m.measurement_concept_id                       as TARGET_CONCEPT_ID,
         m.visit_occurrence_id
-      FROM @target_database_schema.CKD_codes ckd
+      FROM @target_database_schema.#CKD_codes ckd
         JOIN @cdm_database_schema.MEASUREMENT m
           on (m.measurement_concept_id = ckd.concept_id and ckd.category = 'CKD')
 
