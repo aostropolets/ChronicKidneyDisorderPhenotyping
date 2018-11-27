@@ -15,108 +15,6 @@ FROM @target_database_schema.#eGFR
 ) G
 WHERE rn =1;
 
---proteins
-IF OBJECT_ID('#albumin_stage') IS NOT NULL
-	DROP TABLE #albumin_stage;
-CREATE TABLE @target_database_schema.#albumin_stage (
-	person_id INT,
-	measurement_date DATETIME2(6),
-	AStage VARCHAR(100),
-	value_as_number FLOAT 
-);
-INSERT INTO  @target_database_schema.#albumin_stage
-    SELECT
-      person_id,
-      measurement_date,
-      CASE WHEN value_as_number < 30
-        THEN 'A1'
-      WHEN value_as_number >= 30 AND value_as_number <= 300
-        THEN 'A2'
-      WHEN value_as_number > 300
-        THEN 'A3' END AS AStage,
-      value_as_number
-    FROM
-      (SELECT DISTINCT
-         person_id,
-         m.measurement_date,
-         m.measurement_concept_id,
-         case when unit_concept_id in (8723, 8751, 8909, 8576)
-           then value_as_number -- mg/g, mg/l,mg/24h,mg
-         when unit_concept_id = 8840
-           then value_as_number / 10 --mg/dl
-         when unit_concept_id in (8861, 8504, 8636)
-           then value_as_number / 1000 --mg/ml,g/l,g
-         when unit_concept_id = 8753
-           then value_as_number/1500 --mmol/l
-         else null end AS value_as_number,
-         value_as_concept_id
-       FROM @cdm_database_schema.MEASUREMENT m
-       JOIN @target_database_schema.#ckd_codes ON concept_id = measurement_concept_id where category = 'albumin'
-	   WHERE value_as_number IS NOT NULL
-      ) alb;
-
-
-IF OBJECT_ID('#protein_stage') IS NOT NULL
-	DROP TABLE #protein_stage;
-CREATE TABLE @target_database_schema.#protein_stage (
-	person_id INT,
-	measurement_date DATETIME2(6),
-	PStage VARCHAR(100),
-	value_as_number FLOAT 
-);
- INSERT INTO @target_database_schema.#protein_stage
-    SELECT
-      person_id,
-      measurement_date,
-      CASE WHEN PA1 >= PA2 AND PA1 >= PA3
-        THEN 'A1'
-      WHEN PA2 >= PA1 AND PA2 >= PA3
-        THEN 'A2'
-      WHEN PA3 >= PA1 AND PA3 >= PA2
-        THEN 'A3' END AS Pstage,
-      value_as_number
-    FROM (
-           SELECT
-             *,
-             1 - PA1 - PA2 AS PA3
-           FROM (
-                  SELECT
-                    *,
-                    CASE WHEN value_as_number = 0
-                      THEN '1'
-                    ELSE exp(13.136 - 2.497 * log(value_as_number)) /
-                         (1 + exp(13.136 - 2.497 * log(value_as_number))) END AS PA1,
-                    CASE WHEN value_as_number = 0
-                      THEN '0'
-                    ELSE exp(17.993 - 2.666 * log(value_as_number)) /
-                         (1 + exp(17.993 - 2.666 * log(value_as_number))) - exp(13.136 - 2.497 * log(value_as_number))
-                                                                          / (1 + exp(13.136 - 2.497 * log(value_as_number))) END           AS PA2
-                  FROM
-                    (SELECT DISTINCT
-                       person_id,
-                       m.measurement_date,
-                       m.measurement_concept_id,
-                       case when unit_concept_id in (8723, 8751, 8909, 8576)
-                         then value_as_number -- mg/g, mg/l,mg/24h,mg
-                       when unit_concept_id = 8840
-                         then value_as_number / 10 --mg/dl
-                       when unit_concept_id in (8861, 8504, 8636)
-                         then value_as_number / 1000 --mg/ml,g/l,g
-                       when unit_concept_id = 8753
-                         then value_as_number/1500 --mmol/l
-                       else null end AS value_as_number,
-                       value_as_concept_id
-                     FROM @cdm_database_schema.MEASUREMENT m
-                       join @target_database_schema.#ckd_codes on measurement_concept_id = concept_id
-                     where category = 'protein'
-                     
-			) pr1
-                  where pr1.value_as_number is not null
-        	 ) pr2
- 	 ) pr3;
-
-
--- value_as_string doesn't exist, check what there is instead
 
 /* *** BLOCK 6: Dialysis co-occurrent with AKI, defined as AKI happens before or after 1 month of dialysis, 1 month is defined as 31 days (DATEDIFF in month is 1 if the difference between two dates is 1.5 months) ****/
 IF OBJECT_ID('#DialysisCooccurrentWithAKI') IS NOT NULL
@@ -159,6 +57,104 @@ WHERE cohort_definition_id IN (1002,1003) -- AKD, Other acute conditions
 AND ABS(DATEDIFF(day, T.measurement_date, U.cohort_start_date)) <= 31 --For acute calculating of 1 month by using 31 days.
  ;
 
+/* *** BLOCK 8: A-staging: get all urine protein test and corresponding A stage first *** */
+/*** Block 8B: A-staging for A24 and UACR */
+IF OBJECT_ID('#protein_stage') IS NOT NULL
+	DROP TABLE #protein_stage;
+CREATE TABLE @target_database_schema.#protein_stage (
+	person_id INT,
+	measurement_date DATETIME2(6),
+	stage VARCHAR(100),
+        eventtype VARCHAR(100),
+	value_as_number FLOAT 
+);
+INSERT INTO  @target_database_schema.#protein_stage
+    SELECT
+      person_id,
+      measurement_date,
+      CASE WHEN value_as_number < 30
+        THEN 'A1'
+      WHEN value_as_number >= 30 AND value_as_number <= 300
+        THEN 'A2'
+      WHEN value_as_number > 300
+        THEN 'A3' END AS stage,
+      'albumin' as eventtype,
+      value_as_number
+    FROM
+      (SELECT DISTINCT
+         person_id,
+         m.measurement_date,
+         m.measurement_concept_id,
+         case when unit_concept_id in (8723, 8751, 8909, 8576)
+           then value_as_number -- mg/g, mg/l,mg/24h,mg
+         when unit_concept_id = 8840
+           then value_as_number / 10 --mg/dl
+         when unit_concept_id in (8861, 8504, 8636)
+           then value_as_number / 1000 --mg/ml,g/l,g
+         when unit_concept_id = 8753
+           then value_as_number/1500 --mmol/l
+         else null end AS value_as_number,
+         value_as_concept_id
+       FROM @cdm_database_schema.MEASUREMENT m
+       JOIN @target_database_schema.#ckd_codes ON concept_id = measurement_concept_id where category = 'albumin'
+	   WHERE value_as_number IS NOT NULL
+      ) alb;
+
+
+/*** Block 8C: A-staging for P24 and UPCR (0 value corresponds to A1 stage) ***/
+ INSERT INTO @target_database_schema.#protein_stage
+    SELECT
+      person_id,
+      measurement_date,
+      CASE WHEN PA1 >= PA2 AND PA1 >= PA3
+        THEN 'A1'
+      WHEN PA2 >= PA1 AND PA2 >= PA3
+        THEN 'A2'
+      WHEN PA3 >= PA1 AND PA3 >= PA2
+        THEN 'A3' END AS stage,
+      'protein' as eventtype,
+      value_as_number
+    FROM (
+           SELECT
+             *,
+             1 - PA1 - PA2 AS PA3
+           FROM (
+                  SELECT
+                    *,
+                    CASE WHEN value_as_number = 0
+                      THEN '1'
+                    ELSE exp(13.136 - 2.497 * log(value_as_number)) /
+                         (1 + exp(13.136 - 2.497 * log(value_as_number))) END AS PA1,
+                    CASE WHEN value_as_number = 0
+                      THEN '0'
+                    ELSE exp(17.993 - 2.666 * log(value_as_number)) /
+                         (1 + exp(17.993 - 2.666 * log(value_as_number))) - exp(13.136 - 2.497 * log(value_as_number))
+                                                                          / (1 + exp(13.136 - 2.497 * log(value_as_number))) END           AS PA2
+                  FROM
+                    (SELECT DISTINCT
+                       person_id,
+                       m.measurement_date,
+                       m.measurement_concept_id,
+                       case when unit_concept_id in (8723, 8751, 8909, 8576)
+                         then value_as_number -- mg/g, mg/l,mg/24h,mg
+                       when unit_concept_id = 8840
+                         then value_as_number / 10 --mg/dl
+                       when unit_concept_id in (8861, 8504, 8636)
+                         then value_as_number / 1000 --mg/ml,g/l,g
+                       when unit_concept_id = 8753
+                         then value_as_number/1500 --mmol/l
+                       else null end AS value_as_number,
+                       value_as_concept_id
+                     FROM @cdm_database_schema.MEASUREMENT m
+                       join @target_database_schema.#ckd_codes on measurement_concept_id = concept_id
+                     where category = 'protein'
+                     
+			) pr1
+                  where pr1.value_as_number is not null
+        	 ) pr2
+ 	 ) pr3;
+
+
 /*** Block 8D: A-staging for Dipstick Urine Analysis Protein. UA protein data range is Negative, Trace, 1+, 2+, 3+, 4+ ***/
 /** UA Protein with co-occurrent SG **/
 INSERT INTO #protein_stage
@@ -170,7 +166,8 @@ INSERT INTO #protein_stage
     WHEN PA2 >= PA1 AND PA2 >= PA3
       THEN 'A2'
     WHEN PA3 >= PA1 AND PA3 >= PA2
-      THEN 'A3' END AS Pstage,
+      THEN 'A3' END AS stage,
+    'protein' as eventtype,
      uaProteinNumValue as value_as_number 
   FROM (
          SELECT
@@ -234,7 +231,8 @@ CASE WHEN T1.value_as_concept_id  in (45878583,9189) -- 'Negative'
 	WHEN T1.value_as_concept_id  = 45878548 -- '1+'
 	THEN 'A2'
 	WHEN T1.value_as_concept_id  IN (45878148,45881916,45878148,45878305,45876467,45881623)--('2+', '3+', '4+') 
-	THEN 'A3' END AS Astage,
+	THEN 'A3' END AS stage,
+'protein' as eventtype,
 CASE WHEN T1.value_as_concept_id  in (45878583,9189) -- 'Negative'
 	THEN 0
 	WHEN T1.value_as_concept_id  in (45881796,9192,45878303) -- 'Trace' 
@@ -242,8 +240,8 @@ CASE WHEN T1.value_as_concept_id  in (45878583,9189) -- 'Negative'
 	WHEN T1.value_as_concept_id  = 45878548 -- '1+'
 	THEN 2
 	WHEN T1.value_as_concept_id  IN (45878148,45881916,45878148,45878305,45876467,45881623)--('2+', '3+', '4+') 
-	THEN 3 END AS eventNumValue
-FROM ( select * FROM @cdm_database_schema.MEASUREMENT join @target_database_schema.ckd_codes on measurement_concept_id = concept_id 
+	THEN 3 END AS value_as_number
+FROM ( select * FROM @cdm_database_schema.MEASUREMENT join @target_database_schema.#ckd_codes on measurement_concept_id = concept_id 
 	and category ='protein') T1
 LEFT JOIN 
 	(SELECT *
@@ -256,14 +254,12 @@ ON T1.person_id = T2.person_id
 WHERE T2.value_as_number is not null
 ;
 
-
-/* Test #tmpUrineTest */
+/* Test #stages */
 SELECT * FROM (
-SELECT *, ROW_NUMBER() OVER(PARTITION BY person_id, eventStartDate ORDER by Astage DESC) AS rn
- FROM (SELECT DISTINCT person_id, eventStartDate, ruleAstage FROM #tmpUrineTest) K1
+SELECT *, ROW_NUMBER() OVER(PARTITION BY person_id, measurement_date ORDER by stage DESC) AS rn
+ FROM (SELECT DISTINCT person_id, measurement_date, stage FROM #protein_stage) K1
  ) K1
  WHERE rn>1; 
- 
 
 /* *** BLOCK 9: For deriving proteinuria status, retrieve most recent A staging and its prior Astaging *** */
 /*** Block 9A: get Urine Test that is close to the most recent eGFR. The urine test is no later than 24 month (730 days) before recent eGFR [-24m, now] */
@@ -274,7 +270,7 @@ CREATE TABLE @target_database_schema.#UrineTestCloseToRntGfr (
 	,urineTestDt DATETIME2(6)
 	,urineTestType VARCHAR(100)
 	,urineTestNumVal FLOAT
-	,ruleAstage VARCHAR(80) NOT NULL
+	,Astage VARCHAR(80) NOT NULL
 	,rn INT NOT NULL
 	,eGFRrecentVal FLOAT
 	,eGFRrecentDt DATETIME2(6)
@@ -283,17 +279,18 @@ CREATE TABLE @target_database_schema.#UrineTestCloseToRntGfr (
 INSERT INTO @target_database_schema.#UrineTestCloseToRntGfr
     SELECT
       G.person_id,
-      U.measurement_date,
-      U.value_as_number,
-      U.Pstage,
+      U.measurement_date as urineTestDt,
+      U.eventtype as urineTestType,
+      U.value_as_number as urineTestNumVal,
+      U.stage as AStage,
       ROW_NUMBER()
       OVER (
         PARTITION BY G.person_id
         ORDER by U.measurement_date DESC ) AS rn,
-      G.value_as_number,
-      G.measurement_date
-    FROM @target_database_schema.EGFR G
-      JOIN @target_database_schema.protein_stage U
+      G.eGFR as eGFRrecentVal,
+      G.measurement_date as eGFRrecentDt 
+    FROM @target_database_schema.#EGFR G
+      JOIN @target_database_schema.#protein_stage U
         ON G.person_id = U.person_id
     WHERE DATEDIFF(DAY, U.measurement_date, G.measurement_date) <= 730; --For acute calculating of 24 months by using 730 days.
     
@@ -305,45 +302,54 @@ CREATE TABLE @target_database_schema.#UrineTestCloseToRntGfr2 (
 	person_id INT
 	,urineTestDt DATETIME2(6)
 	,urineTestType VARCHAR(100)
-	,value_as_number FLOAT
+	,urineTestNumVal FLOAT
 	,Astage VARCHAR(80) NOT NULL
 	,diffMonth INT NOT NULL
 	,rn INT NOT NULL
 	,eGFRrecentVal FLOAT
 	,eGFRrecentDt DATETIME2(6)
-	);
+	);  
  
 INSERT INTO @target_database_schema.#UrineTestCloseToRntGfr2 
-SELECT UJ.person_id, UJ.measurement_start_date, UJ.value_as_number, UJ.Astage, UJ.diffMonth
-, ROW_NUMBER() OVER(PARTITION BY person_id ORDER by UJ.measurement_start_date DESC) AS rn
+SELECT UJ.person_id, UJ.urineTestDt, UJ.urineTestNumVal, UJ.Astage, UJ.diffMonth
+, ROW_NUMBER() OVER(PARTITION BY person_id ORDER by UJ.urineTestDt DESC) AS rn
 ,UJ.eGFRrecentVal
-,UJ.measurement_start_date
+,UJ.urineTestDt
 FROM (
 SELECT U.*
-, (DATE_PART('month', U.measurement_date) -  DATE_PART('month',J.measurement_date)  --DATEDIFF(MONTH, U.measurement_start_date, J.measurement_start_date) 
+, DATEDIFF(MONTH, U.urineTestDt, J.urineTestDt) 
 AS diffMonth
-, (DATE_PART('day', U.measurement_date) -  DATE_PART('day',J.measurement_date)    --DATEDIFF(DAY, U.measurement_start_date, J.measurement_start_date)
+, DATEDIFF(DAY, U.urineTestDt, J.urineTestDt)
  AS diffDay
-FROM UrineTestCloseToRntGfr U 
+FROM @target_database_schema.#UrineTestCloseToRntGfr U 
  
-LEFT JOIN (SELECT * FROM UrineTestCloseToRntGfr WHERE rn = 1) J
+LEFT JOIN (SELECT * FROM @target_database_schema.#UrineTestCloseToRntGfr WHERE rn = 1) J
 ON U.person_id = J.person_id 
 ) UJ
 WHERE UJ.diffDay = 0 OR UJ.diffMonth >= 3; --this is to keep the most recent urine test and the 3-month-earlier_previous one
 
 /*** Block 9C: A-staging: get most recent Astaging and the prior Astaging ***/
-CREATE TEMP TABLE @target_database_schema.Astaging 
-AS
+CREATE TABLE @target_database_schema.#Astaging (
+
+	person_id INT
+,
+	recentAstage VARCHAR(100)
+,
+	priorAstage VARCHAR(100)
+
+);
+
+INSERT INTO @target_database_schema.#Astaging 
 SELECT DISTINCT J1.person_id
 ,J1.Astage AS recentAstage
 ,J2.Astage AS priorAstage
-FROM (SELECT * FROM UrineTestCloseToRntGfr2 WHERE rn = 1) J1
-LEFT JOIN (SELECT * FROM rineTestCloseToRntGfr2 WHERE rn =2) J2
+FROM (SELECT * FROM @target_database_schema.#UrineTestCloseToRntGfr2 WHERE rn = 1) J1
+LEFT JOIN (SELECT * FROM @target_database_schema.#UrineTestCloseToRntGfr2 WHERE rn =2) J2
 ON J1.person_id = J2.person_id;
 
 
 /* *** BLOCK 10: Get CKD case/control definition/algorithm related variables *** */
-CREATE TEMP TABLE @target_database_schema.AlgVar (
+CREATE TABLE @target_database_schema.#AlgVar (
 	person_id INT NOT NULL
 	,diseaseName VARCHAR(50) NOT NULL
 	,caseControlUnknown VARCHAR(50) NOT NULL
@@ -363,7 +369,7 @@ CREATE TEMP TABLE @target_database_schema.AlgVar (
 	,C20 VARCHAR(100)
 	,C21 VARCHAR(100)
 	);
-INSERT INTO AlgVar
+INSERT INTO @target_database_schema.#AlgVar
 SELECT DISTINCT J.person_id
 	,'CKD' AS diseaseName
 	,'CASE/CONTROL/UNKNOWN' AS caseControlUnknown
@@ -407,10 +413,10 @@ LEFT JOIN (
 /* Has CKD-EPI eGFR */
 	SELECT person_id
 		,COUNT(DISTINCT measurement_date) AS eGFRCnt
-	FROM @target_database_schema.eGFR
+	FROM @target_database_schema.#eGFR
 	GROUP BY person_id
 	) J2
-ON J.person_id = J2.subject_id
+ON J.person_id = J2.person_id
 
 LEFT JOIN (
 /* diagnosed with CKD or other type of kidney disease*/
@@ -424,19 +430,19 @@ ON J.person_id = J3.subject_id
 
 LEFT JOIN (
 /* recent eGFR NOT co-occurrent with Aki, Prerenal kideny injury, sepsis, volume depletion, shock */
-	SELECT subject_id, eGFRrecentVal AS eGFRrecentNotCooccurAcuteConditionVal, eGFRrecentDt AS eGFRrecentNotCooccurrAcuteConditionDt
-	FROM @target_database_schema.GFRrecent G
-	WHERE eGFRrecentDt NOT IN (SELECT DISTINCT eGfrDt FROM  GfrCooccurrentWithAcuteCondition 
-		WHERE GfrCooccurrentWithAcuteCondition.person_id=G.person_id)
+	SELECT person_id, eGFRrecentVal AS eGFRrecentNotCooccurAcuteConditionVal, eGFRrecentDt AS eGFRrecentNotCooccurrAcuteConditionDt
+	FROM @target_database_schema.#GFRrecent G
+	WHERE eGFRrecentDt NOT IN (SELECT DISTINCT eGfrDt FROM  #GfrCooccurrentWithAcuteCondition a
+		WHERE a.person_id=G.person_id)
 	) J4
-ON J.person_id = J4.subject_id
+ON J.person_id = J4.person_id
 
 LEFT JOIN (
 /* eGFR < 90 earliest: this is to infer "has at least one CKD-EPI eGFR <90 more than 3 months prior"*/
-	SELECT person_id, eGFR AS eGFRlt90EarliestVal, crDt AS eGFRlt90EarliestDt
+	SELECT person_id, eGFR AS eGFRlt90EarliestVal, measurement_date AS eGFRlt90EarliestDt
 	FROM (
-		SELECT person_id, eGFR, measurement_date, ROW_NUMBER() OVER(PARTITION BY person_id ORDER by crDt ASC) AS rn
- 		FROM @target_database_schema.eGFR
+		SELECT person_id, eGFR, measurement_date, ROW_NUMBER() OVER(PARTITION BY person_id ORDER by measurement_date ASC) AS rn
+ 		FROM @target_database_schema.#eGFR
 		WHERE eGFR <90 ) G
 	WHERE G.rn=1
 	) J6
@@ -446,47 +452,47 @@ LEFT JOIN (
 /* Cr measurement */
 SELECT person_id
 		,COUNT(DISTINCT measurement_date) AS crCnt
-	FROM @target_database_schema.creatinine
+	FROM @target_database_schema.#creatinine
 	GROUP BY person_id
 	) J12
 ON J.person_id = J12.person_id
 
 LEFT JOIN (
 /* Dialysis co-occurrent with Aki */
-SELECT subject_id
+SELECT person_id
 		,COUNT(DISTINCT dialysisDt) AS dialysisCooccurAkiCnt
-	FROM @target_database_schema.DialysisCooccurrentWithAKI
+	FROM @target_database_schema.#DialysisCooccurrentWithAKI
 	GROUP BY person_id
 	) J13
-ON J.person_id = J13.subject_id
+ON J.person_id = J13.person_id
 
 LEFT JOIN (
 /* recent eGFR co-occurrent with Acute Condition (Aki, Prerenal kideny injury, sepsis, volume depletion, shock) */
-	SELECT subject_id, value_as_number AS eGFRrecentCooccurAcuteConditionVal, 
+	SELECT person_id, value_as_number AS eGFRrecentCooccurAcuteConditionVal, 
 	eGFRrecentDt AS eGFRrecentCooccurAcuteConditionDt
-	FROM @target_database_schema.UrineTestCloseToRntGfr2 G
-	WHERE measurement_date IN (
-		SELECT DISTINCT measurement_date FROM  GfrCooccurrentWithAcuteCondition 
-	WHERE GfrCooccurrentWithAcuteCondition.person_id=G.person_id)
+	FROM @target_database_schema.#UrineTestCloseToRntGfr2 G
+	WHERE eGFRrecentDt IN (
+		SELECT DISTINCT eGfrDt FROM  #GfrCooccurrentWithAcuteCondition A
+	WHERE A.person_id=G.person_id)
 	) J14
-ON J.person_id = J14.subject_id
+ON J.person_id = J14.person_id
 
 LEFT JOIN (
 /* Has a urine test from the present to 24M before the most recent eGFR */
-	SELECT person_id, COUNT(measurement_date) AS urineTestCloseToRntGfrCnt 
-	FROM @target_database_schema.UrineTestCloseToRntGfr
+	SELECT person_id, COUNT (urineTestDt) AS urineTestCloseToRntGfrCnt 
+	FROM @target_database_schema.#UrineTestCloseToRntGfr
 	GROUP BY person_id
 	) J19
 ON J.person_id = J19.person_id
 
 /* A staging */
-LEFT JOIN Astaging J20
+LEFT JOIN  @target_database_schema.#Astaging J20
 ON J.person_id = J20.person_id
 ;
 
 /* *** BLOCK 11: Phenotyping *** */
-DROP TABLE phenotypePre;
-CREATE TABLE phenotypePre (
+DROP TABLE  @target_database_schema.#phenotypePre;
+CREATE TABLE  @target_database_schema.#phenotypePre (
 	person_id INT
 	,transplantCnt INT
 	,dialysisCnt INT
@@ -508,7 +514,7 @@ CREATE TABLE phenotypePre (
 	,CaseControlUnknownStatus VARCHAR(200)
 	);
 	
-INSERT INTO phenotypePre
+INSERT INTO  @target_database_schema.#phenotypePre
 SELECT DISTINCT *
 ,CASE WHEN NKF_Stage_detail IN ('CKD Stage 1', 'CKD Stage 2', 'CKD Stage 3a', 'CKD Stage 3b', 'CKD Stage 4', 'CKD Stage 5', 
 'ESRD after transplant', 'ESRD on dialysis') THEN NKF_Stage_detail
@@ -521,7 +527,8 @@ WHEN NKF_Stage_detail LIKE 'CKD%control' THEN 'Control'
 WHEN NKF_Stage_detail LIKE 'Indeterminate%' THEN 'Unknown'
 ELSE NULL END AS CaseControlUnknownStatus
 FROM (
-SELECT DISTINCT CL.PATIENT_ID AS person_id
+SELECT DISTINCT 
+ A.person_id
 ,A.C00 AS transplantCnt
 ,A.C01 AS dialysisCnt
 ,A.C13 AS dialysisCooccurAkiCnt
@@ -568,9 +575,7 @@ WHEN C00 =0 AND C01 = 0 AND C02 > 0 AND C05 IS NOT NULL AND C04 >= 90 AND C03 = 
 WHEN C00 =0 AND C01 = 0 AND C02 > 0 AND C05 IS NOT NULL AND C04 >= 90 AND C03 = 0 AND C19 > 0 AND C20 IN ('A2','A3') AND (C21 NOT IN ('A2','A3') OR C21 IS NULL) THEN 'Indeterminate - no qualified previous A-staging for defining G1A1-control' --
 
 END AS NKF_Stage_detail
-FROM @cdm_database_schema.PERSON CL
-LEFT JOIN AlgVar A
-ON CL.person_id = A.person_id
+FROM @target_database_schema.#AlgVar A
 ) U
 ;
 
