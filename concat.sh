@@ -1,7 +1,7 @@
-cat "1.CDK_codes.sql" > whole_script.sql
-cat "2.creatinine.sql" >> whole_script.sql
-cat "3.height.sql" >> whole_script.sql
-cat "4.eGFR.sql" >> whole_script.sql
+cat "1. CDK_codes.sql" > whole_script.sql
+cat "2. creatinine.sql" >> whole_script.sql
+cat "3. height.sql" >> whole_script.sql
+cat "4. eGFR.sql" >> whole_script.sql
 cat "5.0 transplant.sql" >> whole_script.sql
 cat "5.1 dialysis.sql" >> whole_script.sql
 cat "5.2 Other_Acute.sql" >> whole_script.sql

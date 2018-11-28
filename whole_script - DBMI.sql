@@ -60,7 +60,7 @@ select c.category,
           select
             'protein',
             c.* -- general
-          from @cdm_database_schema.concept c
+          from ohdsi_cumc_deid_pending.dbo.concept c
           where concept_id in (4152995, 4064934,3001237,3005897,3011705,3014051,3017756,3017817,3019077,3020876,3028250,3029872,3033812,3035511,
 			       3037121,3037185,3038906,3039271,3040443,3040816,3044927,4025832,4041881,4064934,4152995,4154500,
 	                       4211845,4220762,4251338,21491095,40760845,40762085,46235791)
@@ -1666,7 +1666,7 @@ INSERT INTO  #protein_stage
 INSERT INTO #protein_stage
   SELECT DISTINCT
     person_id,
-    measurement_date,
+    uaProteinDate,
     CASE WHEN PA1 >= PA2 AND PA1 >= PA3
       THEN 'A1'
     WHEN PA2 >= PA1 AND PA2 >= PA3
@@ -1719,7 +1719,8 @@ INSERT INTO #protein_stage
                   (SELECT *
                    FROM ohdsi_cumc_deid_pending.dbo.MEASUREMENT
                      join #ckd_codes on measurement_concept_id = concept_id
-                                       and category = 'gravity') T2
+                                       and category = 'gravity'
+                    where value_as_number < '1.05' and value_as_number > '1') T2
                     ON T1.person_id = T2.person_id
                        AND T1.measurement_date = T2.measurement_date
                                 WHERE T2.value_as_number is not null
@@ -1749,15 +1750,16 @@ CASE WHEN T1.value_as_concept_id  in (45878583,9189) -- 'Negative'
 	THEN 3 END AS value_as_number
 FROM ( select * FROM ohdsi_cumc_deid_pending.dbo.MEASUREMENT join #ckd_codes on measurement_concept_id = concept_id 
 	and category ='protein') T1
-LEFT JOIN 
+JOIN 
 	(SELECT *
 	FROM ohdsi_cumc_deid_pending.dbo.MEASUREMENT 
 	join #ckd_codes on measurement_concept_id = concept_id 
-	and category ='gravity') T2
+        and category = 'gravity'
+	where value_as_number < '1.05' and value_as_number > '1') T2
 ON T1.person_id = T2.person_id 
  AND T1.measurement_date = T2.measurement_date
  --AND CAST(T1.eventStartDate AS DATE)= CAST(T2.eventStartDate AS DATE) /* UA protein and SG are measured at the same datetime--depends on each instition's lab order habit*/
-WHERE T2.value_as_number is not null
+
 ;
 
 /* Test #stages */

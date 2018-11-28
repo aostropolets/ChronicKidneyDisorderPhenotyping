@@ -160,7 +160,7 @@ INSERT INTO  @target_database_schema.#protein_stage
 INSERT INTO #protein_stage
   SELECT DISTINCT
     person_id,
-    measurement_date,
+    uaProteinDate,
     CASE WHEN PA1 >= PA2 AND PA1 >= PA3
       THEN 'A1'
     WHEN PA2 >= PA1 AND PA2 >= PA3
@@ -213,7 +213,8 @@ INSERT INTO #protein_stage
                   (SELECT *
                    FROM @cdm_database_schema.MEASUREMENT
                      join @target_database_schema.#ckd_codes on measurement_concept_id = concept_id
-                                       and category = 'gravity') T2
+                                       and category = 'gravity'
+		    where value_as_number < '1.05' and value_as_number > '1') T2
                     ON T1.person_id = T2.person_id
                        AND T1.measurement_date = T2.measurement_date
                                 WHERE T2.value_as_number is not null
@@ -243,15 +244,16 @@ CASE WHEN T1.value_as_concept_id  in (45878583,9189) -- 'Negative'
 	THEN 3 END AS value_as_number
 FROM ( select * FROM @cdm_database_schema.MEASUREMENT join @target_database_schema.#ckd_codes on measurement_concept_id = concept_id 
 	and category ='protein') T1
-LEFT JOIN 
+JOIN 
 	(SELECT *
 	FROM @cdm_database_schema.MEASUREMENT 
 	join @target_database_schema.#ckd_codes on measurement_concept_id = concept_id 
-	and category ='gravity') T2
+	and category ='gravity'
+        where value_as_number < '1.05' and value_as_number > '1') T2
 ON T1.person_id = T2.person_id 
  AND T1.measurement_date = T2.measurement_date
  --AND CAST(T1.eventStartDate AS DATE)= CAST(T2.eventStartDate AS DATE) /* UA protein and SG are measured at the same datetime--depends on each instition's lab order habit*/
-WHERE T2.value_as_number is not null
+
 ;
 
 /* Test #stages */
