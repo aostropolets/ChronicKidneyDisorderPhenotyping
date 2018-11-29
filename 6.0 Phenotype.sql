@@ -27,7 +27,7 @@ CREATE TABLE @target_database_schema.#DialysisCooccurrentWithAKI (
 );
 
 INSERT INTO @target_database_schema.#DialysisCooccurrentWithAKI
-SELECT DISTINCT T.person_id, T.cohort_start_date AS dialysisDt, U.cohort_start_date AS akiDt,
+SELECT DISTINCT T.subject_id, T.cohort_start_date AS dialysisDt, U.cohort_start_date AS akiDt,
 	ABS(DATEDIFF(day, T.cohort_start_date, U.cohort_start_date)) AS dialysisAkiDiffDtAbs
 FROM @target_database_schema.cohort T
 LEFT JOIN @target_database_schema.cohort U
@@ -96,8 +96,8 @@ INSERT INTO  @target_database_schema.#protein_stage
          else null end AS value_as_number,
          value_as_concept_id
        FROM @cdm_database_schema.MEASUREMENT m
-       JOIN @target_database_schema.#ckd_codes ON concept_id = measurement_concept_id
-       where category = 'albumin' and value_as_number IS NOT NULL
+       JOIN @target_database_schema.#ckd_codes ON concept_id = measurement_concept_id where category = 'albumin'
+	   WHERE value_as_number IS NOT NULL
       ) alb;
 
 
