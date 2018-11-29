@@ -1,4 +1,4 @@
-Add trashholds for extreme values
+﻿Add trashholds for extreme values
 for non-standard units
 
 /***** TRANSPLANT
@@ -1756,7 +1756,6 @@ INSERT INTO @target_database_schema.#UrineTestCloseToRntGfr
 CREATE TABLE @target_database_schema.#UrineTestCloseToRntGfr2 (
 	person_id INT
 	,urineTestDt DATETIME2(6)
-	,urineTestType VARCHAR(100)
 	,urineTestNumVal FLOAT
 	,Astage VARCHAR(80) NOT NULL
 	,diffMonth INT NOT NULL
@@ -1923,7 +1922,7 @@ ON J.person_id = J13.person_id
 
 LEFT JOIN (
 /* recent eGFR co-occurrent with Acute Condition (Aki, Prerenal kideny injury, sepsis, volume depletion, shock) */
-	SELECT person_id, value_as_number AS eGFRrecentCooccurAcuteConditionVal, 
+	SELECT person_id, urineTestNumVal AS eGFRrecentCooccurAcuteConditionVal, 
 	eGFRrecentDt AS eGFRrecentCooccurAcuteConditionDt
 	FROM @target_database_schema.#UrineTestCloseToRntGfr2 G
 	WHERE eGFRrecentDt IN (

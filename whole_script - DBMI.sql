@@ -1807,7 +1807,6 @@ INSERT INTO #UrineTestCloseToRntGfr
 CREATE TABLE #UrineTestCloseToRntGfr2 (
 	person_id INT
 	,urineTestDt DATETIME2(6)
-	,urineTestType VARCHAR(100)
 	,urineTestNumVal FLOAT
 	,Astage VARCHAR(80) NOT NULL
 	,diffMonth INT NOT NULL
@@ -1845,7 +1844,7 @@ CREATE TABLE #Astaging (
 
 );
 
-INSERT INTO @#Astaging 
+INSERT INTO #Astaging 
 SELECT DISTINCT J1.person_id
 ,J1.Astage AS recentAstage
 ,J2.Astage AS priorAstage
@@ -1974,7 +1973,7 @@ ON J.person_id = J13.person_id
 
 LEFT JOIN (
 /* recent eGFR co-occurrent with Acute Condition (Aki, Prerenal kideny injury, sepsis, volume depletion, shock) */
-	SELECT person_id, value_as_number AS eGFRrecentCooccurAcuteConditionVal, 
+	SELECT person_id, urineTestNumVal AS eGFRrecentCooccurAcuteConditionVal, 
 	eGFRrecentDt AS eGFRrecentCooccurAcuteConditionDt
 	FROM #UrineTestCloseToRntGfr2 G
 	WHERE eGFRrecentDt IN (
@@ -2086,3 +2085,45 @@ FROM #AlgVar A
 ;
 
 
+
+
+select count(*) from ohdsi_cumc_deid_pending.results.phenotypePre
+where CaseControlUnknownStatus 
+
+;
+
+person id 4547
+
+
+select person_id, coalesce(eGFRlt90EarliestDt,eGFRrecentNotCooccurrAcuteConditionDt), coalesce(recentAstage,priorAstage), p.*
+
+from ohdsi_cumc_deid_pending.results.phenotypePre p
+where CaseControlUnknownStatus in ('Control','Case');
+
+
+select person_id, coalesce(eGFRlt90EarliestDt,eGFRrecentNotCooccurrAcuteConditionDt)
+
+from ohdsi_cumc_deid_pending.results.phenotypePre p
+where CaseControlUnknownStatus in ('Case')
+and coalesce(eGFRlt90EarliestDt,eGFRrecentNotCooccurrAcuteConditionDt) is not null
+;
+
+insert into ohdsi_cumc_deid_pending.results.cohort
+(COHORT_DEFINITION_ID,subject_id,cohort_start_date,cohort_end_date)
+select '1006',person_id,eGFRlt90EarliestDt as cohort_start_date, eGFRlt90EarliestDt as cohort_end_date
+from 
+(
+select person_id, eGFRlt90EarliestDt
+from ohdsi_cumc_deid_pending.results.phenotypePre p
+where CaseControlUnknownStatus in ('Case')
+and eGFRlt90EarliestDt is not null
+
+union
+
+select person_id, eGFRrecentNotCooccurrAcuteConditionDt
+from ohdsi_cumc_deid_pending.results.phenotypePre p
+where CaseControlUnknownStatus in ('Case')
+and eGFRrecentNotCooccurrAcuteConditionDt is not null
+) a
+
+;
