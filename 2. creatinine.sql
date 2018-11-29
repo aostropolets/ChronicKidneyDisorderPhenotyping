@@ -1,6 +1,4 @@
-IF OBJECT_ID('#creatinine') IS NOT NULL
-	DROP TABLE @target_database_schema.#creatinine;
-CREATE TABLE @target_database_schema.#creatinine (
+CREATE TABLE @target_database_schema.creatinine (
 	person_id INT,
 	gender_concept_id INT,
 	race_concept_id INT,
@@ -19,10 +17,10 @@ CREATE TABLE @target_database_schema.#creatinine (
 	);
 		
 	
-INSERT INTO @target_database_schema.#creatinine 
+INSERT INTO @target_database_schema.creatinine 
 SELECT cr.*,
-	  CASE WHEN value_as_number/kappaFactor < 1 THEN value_as_number/kappaFactor ELSE 1 END AS minCrK,
-	  CASE WHEN value_as_number/kappaFactor > 1 THEN value_as_number/kappaFactor ELSE 1 END AS maxCrK
+	  CASE WHEN crVal/kappaFactor < 1 THEN crVal/kappaFactor ELSE 1 END AS minCrK,
+	  CASE WHEN crVal/kappaFactor > 1 THEN crVal/kappaFactor ELSE 1 END AS maxCrK
 	  FROM (
 	SELECT DISTINCT m.person_id, gender_concept_id, race_concept_id,  
 		measurement_date,
@@ -53,7 +51,7 @@ SELECT cr.*,
         ELSE -0.411	 END AS alphaFactor
 	FROM @cdm_database_schema.person p
     JOIN @cdm_database_schema.MEASUREMENT m on p.person_id = m.person_id
-    JOIN @target_database_schema.#CKD_codes on measurement_concept_id = concept_id and category = 'creatinine' 
+    JOIN @target_database_schema.CKD_codes on measurement_concept_id = concept_id and category = 'creatinine' 
     WHERE m.value_as_number IS NOT NULL and m.value_as_number>0
 	) CR 
     ;
