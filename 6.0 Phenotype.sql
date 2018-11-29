@@ -292,7 +292,7 @@ INSERT INTO @target_database_schema.#UrineTestCloseToRntGfr
       G.eGFR as eGFRrecentVal,
       G.measurement_date as eGFRrecentDt 
     FROM @target_database_schema.#EGFR G
-      JOIN @target_database_schema.#protein_stage U
+       LEFT JOIN @target_database_schema.#protein_stage U
         ON G.person_id = U.person_id
     WHERE DATEDIFF(DAY, U.measurement_date, G.measurement_date) <= 730; --For acute calculating of 24 months by using 730 days.
     
