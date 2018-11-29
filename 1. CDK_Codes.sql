@@ -1,25 +1,4 @@
-Add trashholds for extreme values
-for non-standard units
-
-/***** TRANSPLANT
-excluded:
-Transplant from live donor
-Transplant from cadaver 
-Resection of Right Ureter, Open Approach
-Resection of Right Ureter, Percutaneous Endoscopic Approach
-Resection of Right Ureter, Via Natural or Artificial Opening
-Resection of Right Ureter, Via Natural or Artificial Opening Endoscopic
-Nephroureterectomy ;
-
-Ureteroneocystostomy
-Nephroureterectomy
-Venous catheterization for renal dialysis
-bypasses
-********/
-
-IF OBJECT_ID('#ckd_codes') IS NOT NULL
-	DROP TABLE @target_database_schema.#ckd_codes;
-create table @target_database_schema.#ckd_codes
+create table @target_database_schema.ckd_codes
 (category nvarchar(400),
 concept_id int,
 concept_name nvarchar(400),
@@ -30,7 +9,7 @@ domain_id nvarchar(400),
 );
 
 
-insert into @target_database_schema.#ckd_codes (category,concept_id,concept_name,concept_code,vocabulary_id,domain_id )
+insert into @target_database_schema.ckd_codes (category,concept_id,concept_name,concept_code,vocabulary_id,domain_id )
 select c.category,
       c.concept_id,
       c.concept_name,
@@ -112,7 +91,7 @@ select c.category,
         ) c
 ;
 
-INSERT INTO @target_database_schema.#ckd_codes
+INSERT INTO @target_database_schema.ckd_codes
 (
   category,
   concept_id,
@@ -151,7 +130,7 @@ WHERE ancestor_concept_id IN (
 AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
 
-INSERT INTO @target_database_schema.#ckd_codes
+INSERT INTO @target_database_schema.ckd_codes
 (
   category,
   concept_id,
@@ -189,7 +168,7 @@ WHERE ancestor_concept_id IN (
 AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
 
-INSERT INTO @target_database_schema.#ckd_codes
+INSERT INTO @target_database_schema.ckd_codes
   (category, concept_id, concept_name, concept_code, vocabulary_id, domain_id)
 SELECT
   'AKD' AS category,
@@ -226,7 +205,7 @@ WHERE ancestor_concept_id IN (
 
 
 
-INSERT INTO @target_database_schema.#ckd_codes
+INSERT INTO @target_database_schema.ckd_codes
 (
   category,
   concept_id,
@@ -288,7 +267,7 @@ INSERT INTO @target_database_schema.#ckd_codes
         AND c.vocabulary_id NOT IN ('MeSH', 'PPI', 'SUS');
 
 -- didn't get additional codes
-INSERT INTO @target_database_schema.#ckd_codes
+INSERT INTO @target_database_schema.ckd_codes
 (
   category,
   concept_id,
