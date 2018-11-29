@@ -434,7 +434,7 @@ LEFT JOIN (
 /* recent eGFR NOT co-occurrent with Aki, Prerenal kideny injury, sepsis, volume depletion, shock */
 	SELECT person_id, eGFRrecentVal AS eGFRrecentNotCooccurAcuteConditionVal, eGFRrecentDt AS eGFRrecentNotCooccurrAcuteConditionDt
 	FROM @target_database_schema.#GFRrecent G
-	WHERE eGFRrecentDt NOT IN (SELECT DISTINCT eGfrDt FROM  #GfrCooccurrentWithAcuteCondition a
+	WHERE eGFRrecentDt NOT IN (SELECT DISTINCT eGfrDt FROM  @target_database_schema.#GfrCooccurrentWithAcuteCondition a
 		WHERE a.person_id=G.person_id)
 	) J4
 ON J.person_id = J4.person_id
@@ -474,7 +474,7 @@ LEFT JOIN (
 	eGFRrecentDt AS eGFRrecentCooccurAcuteConditionDt
 	FROM @target_database_schema.#UrineTestCloseToRntGfr2 G
 	WHERE eGFRrecentDt IN (
-		SELECT DISTINCT eGfrDt FROM  #GfrCooccurrentWithAcuteCondition A
+		SELECT DISTINCT eGfrDt FROM  @target_database_schema.#GfrCooccurrentWithAcuteCondition A
 	WHERE A.person_id=G.person_id)
 	) J14
 ON J.person_id = J14.person_id
