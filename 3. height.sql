@@ -4,7 +4,7 @@ CREATE TABLE @target_database_schema.#height (
 	person_id INT,
 	measurement_date DATETIME2(6),
 	measurement_concept_id INT,
-	ht VARCHAR(100),
+	ht FLOAT,
 	value_as_concept_id INT
 	);
 	
