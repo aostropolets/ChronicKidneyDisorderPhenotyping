@@ -26,10 +26,10 @@ CREATE TABLE @target_database_schema.#DialysisCooccurrentWithAKI (
 	dialysisAkiDiffDtAbs INT
 );
 
-INSERT INTO @target_database_schema.#DialysisCooccurrentWithAKI;
-SELECT DISTINCT T.person_id, T.cohort_start_date AS dialysisDt, U.cohort_start_date AS akiDt,,
+INSERT INTO @target_database_schema.#DialysisCooccurrentWithAKI
+SELECT DISTINCT T.person_id, T.cohort_start_date AS dialysisDt, U.cohort_start_date AS akiDt,
 	ABS(DATEDIFF(day, T.cohort_start_date, U.cohort_start_date)) AS dialysisAkiDiffDtAbs
-FROM ohdsi_cumc_deid_pending.results.cohort T
+FROM @target_database_schema.cohort T
 LEFT JOIN @target_database_schema.cohort U
 ON T.subject_id=U.subject_id 
 WHERE T.cohort_definition_id = 1001 -- dialysis
