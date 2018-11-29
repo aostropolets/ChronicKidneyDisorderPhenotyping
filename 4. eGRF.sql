@@ -16,11 +16,9 @@ CREATE TABLE @target_database_schema.#EGFR (
 	alphaFactor FLOAT,
 	minCrK FLOAT,
 	maxCrK FLOAT,
-	Ht FLOAT
-,
-	eGFR FLOAT
-,
-	Estage INT
+	Ht FLOAT,
+	eGFR FLOAT,
+	Estage VARCHAR(5)
 );
 
 INSERT INTO @target_database_schema.#EGFR
