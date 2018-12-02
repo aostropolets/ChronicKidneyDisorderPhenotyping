@@ -1,4 +1,4 @@
-﻿-- dialysis excluding acute states
+﻿-- dialysis excluding AKD and other acute states
 
 CREATE TABLE #Codesets (
   codeset_id int NOT NULL,
@@ -9,7 +9,12 @@ CREATE TABLE #Codesets (
 INSERT INTO #Codesets (codeset_id, concept_id)
 SELECT 1 as codeset_id, c.concept_id FROM (select distinct I.concept_id FROM
 ( 
-  select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (438624,4019967,4300837,4300838,4300839,45887996,4059475,4272012,4146536,4026915,4289454)and invalid_reason is null
+  select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (438624,4019967,4300837,4300838,4300839,45887996,4059475,4272012,4146536,4026915,4289454,45889365)and invalid_reason is null
+UNION  select c.concept_id
+  from @vocabulary_database_schema.CONCEPT c
+  join @vocabulary_database_schema.CONCEPT_ANCESTOR ca on c.concept_id = ca.descendant_concept_id
+  and ca.ancestor_concept_id in (438624,4019967,4300837,4300838,4300839,45887996,4059475,4272012,4146536,4026915,4289454,45889365)
+  and c.invalid_reason is null
 
 ) I
 ) C;
@@ -405,7 +410,7 @@ from cteEnds
 group by person_id, end_date
 ;
 
-DELETE FROM @target_database_schema.@target_cohort_table where cohort_definition_id = @target_cohort_id;
+DELETE FROM @target_database_schema.@target_cohort_table where cohort_definition_id = @target_cohort_id; -- hardcoded as 1007
 INSERT INTO @target_database_schema.@target_cohort_table (cohort_definition_id, subject_id, cohort_start_date, cohort_end_date)
 select @target_cohort_id as cohort_definition_id, person_id, start_date, end_date 
 FROM #final_cohort CO
