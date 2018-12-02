@@ -163,7 +163,8 @@ WHERE ancestor_concept_id IN (
 4289454,-- Venous catheterization for renal dialysis
 4272012,--Insertion of cannula for hemodialysis
 4300839,--Dialysis care management
-45887996--End-Stage Renal Disease Services
+45887996,--End-Stage Renal Disease Services
+45889365 --Dialysis Services and Procedures
 )
 AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
@@ -186,16 +187,16 @@ FROM @cdm_database_schema.concept_ancestor
        AND c.invalid_reason IS NULL
 WHERE ancestor_concept_id IN (
   197320, --Acute renal failure syndrome
-          444044, --Acute tubular necrosis
-          761083, --Acute injury of kidney -- coundn't find a common parent w/o nephritis
-          37116430, --Acute kidney failure stage 1
-          37116431, --Acute kidney failure stage 2
-          37116432, --Acute kidney failure stage 3
-          4228827, --Acute milk alkali syndrome
-          4111399, --Acute pericarditis secondary to uremia
-          4232873, --Acute postoperative renal failure
-          40481064, --Acute renal cortical necrosis
-          4126305, --Acute renal impairment
+  444044, --Acute tubular necrosis
+  761083, --Acute injury of kidney -- coundn't find a common parent w/o nephritis
+  37116430, --Acute kidney failure stage 1
+  37116431, --Acute kidney failure stage 2
+  37116432, --Acute kidney failure stage 3
+  4228827, --Acute milk alkali syndrome
+  4111399, --Acute pericarditis secondary to uremia
+  4232873, --Acute postoperative renal failure
+  40481064, --Acute renal cortical necrosis
+  4126305, --Acute renal impairment
   37399017, --Hemorrhagic fever with renal syndrome
   37116834, --Postpartum acute renal failure
   42536547--Ischemia of kidney (in SNOMED only acute)
