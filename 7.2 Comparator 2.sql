@@ -34,7 +34,12 @@ join @vocabulary_database_schema.concept_relationship cr on C.concept_id = cr.co
 INSERT INTO #Codesets (codeset_id, concept_id)
 SELECT 1 as codeset_id, c.concept_id FROM (select distinct I.concept_id FROM
 ( 
-  select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (438624,4019967,4300837,4300838,4300839,45887996,4059475,4272012,4146536,4026915,4289454)and invalid_reason is null
+  select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (438624,4019967,4300837,4300838,4300839,45887996,4059475,4272012,4146536,4026915,4289454) and invalid_reason is null
+UNION  select c.concept_id
+  from @vocabulary_database_schema.CONCEPT c
+  join @vocabulary_database_schema.CONCEPT_ANCESTOR ca on c.concept_id = ca.descendant_concept_id
+  and ca.ancestor_concept_id in (438624,4019967,4300837,4300838,4300839,45887996,4059475,4272012,4146536,4026915,4289454)
+  and c.invalid_reason is null
 
 ) I
 ) C;
