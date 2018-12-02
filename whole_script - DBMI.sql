@@ -163,7 +163,8 @@ WHERE ancestor_concept_id IN (
 4289454,-- Venous catheterization for renal dialysis
 4272012,--Insertion of cannula for hemodialysis
 4300839,--Dialysis care management
-45887996--End-Stage Renal Disease Services
+45887996,--End-Stage Renal Disease Services
+45889365
 )
 AND   c.vocabulary_id NOT IN ('MeSH','PPI','SUS');
 
