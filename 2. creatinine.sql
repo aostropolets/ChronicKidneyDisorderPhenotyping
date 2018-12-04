@@ -6,7 +6,7 @@ CREATE TABLE @target_database_schema.creatinine (
 	measurement_concept_id INT,
 	ageAtMeasYear INT,
 	year_of_birth INT,
-	crVal VARCHAR(100),
+	crVal FLOAT,
 	value_as_concept_id INT,
 	genderFactor FLOAT,
 	raceFactor FLOAT,
@@ -28,12 +28,13 @@ SELECT cr.*,
 		year(measurement_date) - year_of_birth AS ageAtMeasYear,
 		year_of_birth,	
 		case 
-		when unit_concept_id = 8840 then value_as_number-- mg/dl
+		when unit_concept_id in (8840, 8576,0) and value_as_number<5 then value_as_number-- mg/dl
 		when unit_concept_id = 8842 then value_as_number*0.0001 -- ng/ml
 		when unit_concept_id = 8749 then value_as_number*0.0113  -- mcmol/l
 		when unit_concept_id = 9586 then value_as_number*11300 -- mol/l
 		when unit_concept_id = 8753 then value_as_number*11.3 -- mmol/l 
 		when unit_concept_id = 8636 then value_as_number*1000-- g/l
+		when unit_concept_id in (8840,0) and value_as_number>5 then value_as_number*0.0113 -- as units are confused
 		else null end as crVal,
 		value_as_concept_id,
         CASE 
@@ -54,4 +55,5 @@ SELECT cr.*,
     JOIN @target_database_schema.CKD_codes on measurement_concept_id = concept_id and category = 'creatinine' 
     WHERE m.value_as_number IS NOT NULL and m.value_as_number>0
 	) CR 
+	WHERE crVal>0 and crVal<5 -- exclude wierd outliers
     ;
