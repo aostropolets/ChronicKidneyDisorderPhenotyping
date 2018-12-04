@@ -56,5 +56,12 @@ INSERT INTO @target_database_schema.#EGFR
              ELSE NULL END AS eGFR
            FROM #creatinine cr
 	   JOIN #height h on cr.person_id = h.person_id
+	    UNION
+	    SELECT person_id,gender_concept_id,race_concept_id,measurement_date,measurement_concept_id,
+	    year(measurement_date) - year_of_birth AS ageAtMeasYear, year_of_birth, null, null, null, null,
+	    null, null, null, value_as_number
+	    FROM @cdm_database_schema.measurement
+	    join @target_database_schema.CKD_codes on  measurement_concept_id = concept_id and category= 'egfr'
+
          ) egfr
     WHERE eGFR is not NULL;
