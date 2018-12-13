@@ -4,8 +4,7 @@ concept_id int,
 concept_name nvarchar(400),
 concept_code nvarchar(400),
 vocabulary_id nvarchar(400),
-domain_id nvarchar(400),
-
+domain_id nvarchar(400)
 );
 
 
@@ -237,7 +236,7 @@ INSERT INTO @target_database_schema.ckd_codes
   )
         AND c.vocabulary_id NOT IN ('MeSH', 'PPI', 'SUS');
 
-INSERT INTO @target_database_schema.#ckd_codes
+INSERT INTO @target_database_schema.ckd_codes
 (
   category,
   concept_id,
@@ -299,7 +298,7 @@ INSERT INTO @target_database_schema.ckd_codes
         AND c.vocabulary_id NOT IN ('MeSH', 'PPI', 'SUS')
 ;
 
-INSERT INTO @target_database_schema.#ckd_codes
+INSERT INTO @target_database_schema.ckd_codes
 (
   category,
   concept_id,
