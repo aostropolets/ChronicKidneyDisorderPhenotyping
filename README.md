@@ -18,3 +18,12 @@ Nephroureterectomy
 Venous catheterization for renal dialysis
 bypasses
 ********/
+
+
+Also consider:
+192279 Diabetic renal disease
+201313	Hypertensive renal disease
+4030518 Renal impairment
+
+437992	Renal function tests abnormal
+
