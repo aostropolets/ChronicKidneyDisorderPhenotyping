@@ -1,4 +1,4 @@
-type "1. CDK_codes.sql" > whole_script.sql
+type "1. CKD_codes.sql" > whole_script.sql
 type "2. creatinine.sql" >> whole_script.sql
 type "3. height.sql" >> whole_script.sql
 type "4. eGFR.sql" >> whole_script.sql
