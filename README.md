@@ -1,4 +1,6 @@
-# Overview
+# Investigating portability of EHR-derinved pehnotypes 
+
+## Overview
 This script generates cohorts to identify patients with chronic kidney disorder.
 To assemble whole script run concat.bat or concat.sh depending on your OS.
 
